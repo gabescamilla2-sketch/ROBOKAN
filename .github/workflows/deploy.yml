@@ -1,0 +1,10 @@
+# Despliegue a GitHub Pages (completar cuando exista package.json)
+name: deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
