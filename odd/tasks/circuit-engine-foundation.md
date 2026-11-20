@@ -10,8 +10,8 @@ Delivery: ask-on-risk; no push or PR. Runner: Vitest (`npm test`, `npm run test:
 
 ## Tasks
 - T0 [S1] inline; complete; commit `9155775`; preserved five pre-existing circuit files; `git diff --cached --check` passed; runnable tests unavailable at that baseline. Native assessment: medium, `under_budget`; no review due. Baseline authored delta: 869 lines.
-- T1 [S2,S4] inline; complete, source commit pending; minimal dev-only harness and instructions. Risk: item 5 (new development dependencies/environment); independent verification required. No meaningful RED for missing infrastructure; run existing tests before changing rules.
-- T2 [S3,S4] inline; complete, source commit pending; regressions RED, minimal rule corrections GREEN, documentation and full circuit checks. Risk: item 3 (shared rule evaluator affects all five existing educational rules); independent verification at feature end.
+- T1 [S2,S4] inline; complete; commit `e700874`; minimal dev-only harness and instructions. Risk: item 5 (new development dependencies/environment); independent verification required. No meaningful RED for missing infrastructure; run existing tests before changing rules.
+- T2 [S3,S4] inline; complete; commit `e700874`; regressions RED, minimal rule corrections GREEN, documentation and full circuit checks. Risk: item 3 (shared rule evaluator affects all five existing educational rules); independent verification at feature end.
 
 ## Log
 - L1. Original user request: "bien, haremos lo siguiente: primero haremos el apartado del rol 4, para ello te anexo el md de contexto sobre pines y que hace el rol 4, a su vez en la ruta C:\Users\Gabriell\Downloads\ROBOKAN\src\modules\circuit encontraras los archivos avanzados por la persona anterior, al igual que en C:\Users\Gabriell\Downloads\ROBOKAN\tests\circuit-rules.test.ts, revisalo y dime que falta por realizar".
@@ -30,3 +30,6 @@ Delivery: ask-on-risk; no push or PR. Runner: Vitest (`npm test`, `npm run test:
 
 - L11. Targeted independent recheck closed the analog blocker: 4/4 and 3/3 own probes PASS, strict typecheck PASS. S1-S4 met for this bounded foundation. Parent suite25/25 PASS and public regression retained. Native assessment/review outcome pending; no push or PR.
 - L12. Runtime harness is N/A: this unit is a pure evaluator exercised through the public module API; the browser/runtime bridge is explicitly out of scope. Rollback boundary: new root circuit harness, circuit README and evaluator/test changes since9155775; no site/core/other-role modifications.
+
+- L13. Source work unit committed as `e700874` (`fix(circuit): validate powered connections with regression tests`). Authored delta520 lines excluding generated lockfile; accumulated branch1389 lines including preserved baseline. Native assessment: high (configuration plus named item5), `review_due=true/high_risk`; candidate consent pending. No review approval or receipt is claimed. Initial pre-commit assessment could not assess untracked files; after committing intended files, assessment succeeded with a clean tree.
+- L14. Scratch cleanup completed: stable verifier scratch removed after exact resolved-path checks; obsolete per-call sandbox scratch was already absent. No publication or site migration. This document records completion of the bounded engine-foundation implementation, not the whole Role4 editor.
