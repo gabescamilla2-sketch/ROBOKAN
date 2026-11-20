@@ -1,0 +1,19 @@
+{
+  "name": "robokan",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Educational robotics simulator with an isolated circuit rule test harness",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:circuit": "vitest run tests/circuit-rules.test.ts",
+    "typecheck:circuit": "tsc --project tsconfig.circuit.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2",
+    "vitest": "5.1.1"
+  }
+}

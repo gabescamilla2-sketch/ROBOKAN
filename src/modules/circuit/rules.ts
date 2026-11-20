@@ -121,19 +121,68 @@ export function evaluateCircuitRules(
   const boardInstances = allComponentInstances.filter((componentInstance) =>
     getSpec(componentInstance.instanceId)?.category === "board",
   );
-  // Un pin de entrada aislado no recibe una señal útil.
+  // Static rule analysis: boards and batteries supply nominal operating rails.
+  // GPIO direction/value, PWM timing and voltage-divider calculations belong
+  // to the future runtime signal evaluator, not this topology-only engine.
+  const voltagesByNet = new Map<string, Set<number>>();
+  const resistorNeighbors = new Map<string, string[]>();
+
+  function addVoltage(netId: string | undefined, voltageV: number | undefined): void {
+    if (!netId || voltageV === undefined || !Number.isFinite(voltageV) || voltageV < 0) return;
+    const voltages = voltagesByNet.get(netId) ?? new Set<number>();
+    voltages.add(voltageV);
+    voltagesByNet.set(netId, voltages);
+  }
+
   for (const componentInstance of allComponentInstances) {
     const componentSpec = getSpec(componentInstance.instanceId);
     if (!componentSpec) continue;
-
-    for (const pin of componentSpec.pins) {
-      if (pin.pinType !== "digital_in" && pin.pinType !== "analog_in") continue;
-      const pinRef = getPinRef(componentInstance.instanceId, pin.pinName);
-      const net = nets.find((candidateNet) => candidateNet.netId === netIdByPinRef.get(pinRef));
-      if (net?.pinRefs.length === 1) {
-        reportViolation(RULE_IDS.floatingPin, componentInstance.instanceId, pinRef);
+    if (componentSpec.specId === "resistor") {
+      const firstNetId = getNetId(componentInstance.instanceId, "PIN_A");
+      const secondNetId = getNetId(componentInstance.instanceId, "PIN_B");
+      if (firstNetId && secondNetId && firstNetId !== secondNetId) {
+        for (const [fromNetId, toNetId] of [[firstNetId, secondNetId], [secondNetId, firstNetId]]) {
+          const neighbors = resistorNeighbors.get(fromNetId) ?? [];
+          neighbors.push(toNetId);
+          resistorNeighbors.set(fromNetId, neighbors);
+        }
       }
     }
+    if (componentSpec.category !== "board" && componentSpec.category !== "power_source") continue;
+    for (const pin of componentSpec.pins) {
+      const netId = getNetId(componentInstance.instanceId, pin.pinName);
+      if (isGroundPin(pin.pinName, pin.pinType)) {
+        addVoltage(netId, 0);
+      } else if (pin.pinType === "power" && pin.pinName !== "VIN") {
+        // Labels such as 5V, 3V3 and 5V_1 specify nominal rail voltage.
+        // maxVoltageV is a limit, never a voltage source.
+        const rail = /^(\d+)V(\d*)(?:_\d+)?$/.exec(pin.pinName);
+        const voltageV = rail
+          ? Number(`${rail[1]}.${rail[2] || "0"}`)
+          : componentSpec.supplyVoltageV;
+        addVoltage(netId, voltageV);
+      } else if (["digital_out", "analog_out", "pwm_out"].includes(pin.pinType)) {
+        // Explicit board outputs represent a potential HIGH in this static check.
+        addVoltage(netId, componentSpec.supplyVoltageV);
+      }
+    }
+  }
+
+  function reachableVoltages(startNetId: string | undefined): number[] {
+    if (!startNetId) return [];
+    const visited = new Set<string>();
+    const pending = [startNetId];
+    const voltages = new Set<number>();
+    while (pending.length > 0) {
+      const netId = pending.pop()!;
+      if (visited.has(netId)) continue;
+      visited.add(netId);
+      for (const voltageV of voltagesByNet.get(netId) ?? []) voltages.add(voltageV);
+      for (const neighbor of resistorNeighbors.get(netId) ?? []) {
+        if (!visited.has(neighbor)) pending.push(neighbor);
+      }
+    }
+    return [...voltages];
   }
 
   // Una alimentación invertida ocurre si VCC comparte red con GND o viceversa.
@@ -171,6 +220,25 @@ export function evaluateCircuitRules(
     }
   }
 
+  const supplyVoltageByInstance = new Map<string, number>();
+  for (const componentInstance of allComponentInstances) {
+    const componentSpec = getSpec(componentInstance.instanceId);
+    if (!componentSpec || !["sensor", "actuator"].includes(componentSpec.category)) continue;
+    if (statusByInstance[componentInstance.instanceId] === "burned") continue;
+    if (componentSpec.specId === "led") continue; // LED paths are checked separately below.
+    const positiveVoltages = findPins(componentSpec, isPositivePin).flatMap((pinName) =>
+      reachableVoltages(getNetId(componentInstance.instanceId, pinName)).filter((voltageV) => voltageV > 0),
+    );
+    const hasGround = findPins(componentSpec, isGroundPin).some((pinName) =>
+      reachableVoltages(getNetId(componentInstance.instanceId, pinName)).includes(0),
+    );
+    if (positiveVoltages.length === 0 || !hasGround) {
+      statusByInstance[componentInstance.instanceId] = "unpowered";
+    } else {
+      supplyVoltageByInstance.set(componentInstance.instanceId, Math.max(...positiveVoltages));
+    }
+  }
+
   // Si un sensor/actuador entrega señal a la placa, ambas partes deben compartir GND.
   for (const componentInstance of allComponentInstances) {
     const componentSpec = getSpec(componentInstance.instanceId);
@@ -179,7 +247,7 @@ export function evaluateCircuitRules(
     const componentGroundPins = findPins(componentSpec, isGroundPin);
     if (componentGroundPins.length === 0) continue;
     const signalPins = componentSpec.pins.filter((pin) =>
-      ["digital_out", "digital_io", "analog_in", "analog_out", "analog_io", "pwm_out"].includes(pin.pinType),
+      ["digital_in", "digital_out", "digital_io", "analog_in", "analog_out", "analog_io", "pwm_out"].includes(pin.pinType),
     );
 
     const hasSignalConnectedToBoard = signalPins.some((signalPin) => {
@@ -214,88 +282,66 @@ export function evaluateCircuitRules(
     }
   }
 
-  // El LED requiere una resistencia que esté eléctricamente en serie entre
-  // uno de sus terminales y una salida/fuente. Compartir la misma red no basta.
-  const sourceNetIds = new Set<string>();
+  // Powered component outputs can drive a signal at their operating supply.
+  // Unpowered, reversed and missing-ground components never become drivers.
   for (const componentInstance of allComponentInstances) {
     const componentSpec = getSpec(componentInstance.instanceId);
-    if (!componentSpec || (componentSpec.category !== "board" && componentSpec.category !== "power_source")) continue;
-
-    for (const pinName of findPins(componentSpec, (_pinName, pinType) =>
-      ["power", "digital_out", "digital_io", "pwm_out"].includes(pinType),
-    )) {
-      const netId = getNetId(componentInstance.instanceId, pinName);
-      if (netId) sourceNetIds.add(netId);
-    }
-
-    for (const groundPinName of findPins(componentSpec, isGroundPin)) {
-      const groundNetId = getNetId(componentInstance.instanceId, groundPinName);
-      if (groundNetId) sourceNetIds.add(groundNetId);
+    if (!componentSpec || statusByInstance[componentInstance.instanceId] !== "ok") continue;
+    const supplyVoltageV = supplyVoltageByInstance.get(componentInstance.instanceId);
+    if (supplyVoltageV === undefined) continue;
+    for (const pin of componentSpec.pins) {
+      if (["digital_out", "analog_out", "pwm_out"].includes(pin.pinType)) {
+        addVoltage(getNetId(componentInstance.instanceId, pin.pinName), supplyVoltageV);
+      }
     }
   }
 
-  const resistorInstances = allComponentInstances.filter((componentInstance) =>
-    getSpec(componentInstance.instanceId)?.specId === "resistor",
-  );
-
   for (const componentInstance of allComponentInstances) {
-    const componentSpec = getSpec(componentInstance.instanceId);
-    if (!componentSpec || componentSpec.specId !== "led") continue;
-
+    if (getSpec(componentInstance.instanceId)?.specId !== "led") continue;
     const anodeNetId = getNetId(componentInstance.instanceId, "ANODE");
     const cathodeNetId = getNetId(componentInstance.instanceId, "CATHODE");
-    const isConnectedAcrossSourceAndGround = !!anodeNetId
-      && !!cathodeNetId
-      && anodeNetId !== cathodeNetId
-      && sourceNetIds.has(anodeNetId)
-      && sourceNetIds.has(cathodeNetId);
-
-    // Un LED sin alimentación no se quema; la regla solo se activa si queda
-    // conectado entre una salida/fuente y GND.
-    if (!isConnectedAcrossSourceAndGround) continue;
-
-    const hasSeriesResistor = resistorInstances.some((resistorInstance) => {
-      const pinANetId = getNetId(resistorInstance.instanceId, "PIN_A");
-      const pinBNetId = getNetId(resistorInstance.instanceId, "PIN_B");
-      return (
-        (pinANetId === anodeNetId && !!pinBNetId && pinBNetId !== anodeNetId && sourceNetIds.has(pinBNetId))
-        || (pinBNetId === anodeNetId && !!pinANetId && pinANetId !== anodeNetId && sourceNetIds.has(pinANetId))
-        || (pinANetId === cathodeNetId && !!pinBNetId && pinBNetId !== cathodeNetId && sourceNetIds.has(pinBNetId))
-        || (pinBNetId === cathodeNetId && !!pinANetId && pinANetId !== cathodeNetId && sourceNetIds.has(pinANetId))
-      );
-    });
-
-    if (!hasSeriesResistor) {
+    const anodeVoltages = anodeNetId ? [...voltagesByNet.get(anodeNetId) ?? []] : [];
+    const cathodeVoltages = cathodeNetId ? [...voltagesByNet.get(cathodeNetId) ?? []] : [];
+    // If the source and return are wired directly to the LED, no extra resistor
+    // branch can remove that unsafe path. A parallel resistor is not protection.
+    const hasUnprotectedPath = anodeNetId !== cathodeNetId && anodeVoltages.some((anodeVoltageV) =>
+      cathodeVoltages.some((cathodeVoltageV) => anodeVoltageV > cathodeVoltageV),
+    );
+    if (hasUnprotectedPath) {
       reportViolation(RULE_IDS.ledWithoutResistor, componentInstance.instanceId);
+    } else {
+      const reachableCathodeVoltages = reachableVoltages(cathodeNetId);
+      const hasPoweredPath = anodeNetId !== cathodeNetId && reachableVoltages(anodeNetId).some((anodeVoltageV) =>
+        reachableCathodeVoltages.some((cathodeVoltageV) => anodeVoltageV > cathodeVoltageV),
+      );
+      statusByInstance[componentInstance.instanceId] = hasPoweredPath ? "ok" : "unpowered";
     }
   }
 
-  // HC-SR04 ECHO entrega 5 V. Una conexión directa a un GPIO de Pi de 3.3 V
-  // comparte red sin ningún divisor intermedio.
-  for (const sensorInstance of allComponentInstances) {
-    const sensorSpec = getSpec(sensorInstance.instanceId);
-    if (sensorSpec?.specId !== "hc-sr04") continue;
+  for (const boardInstance of boardInstances) {
+    const boardSpec = getSpec(boardInstance.instanceId);
+    if (!boardSpec?.specId.startsWith("raspberry-pi")) continue;
+    for (const boardPin of boardSpec.pins) {
+      if (!boardPin.pinName.startsWith("GPIO")) continue;
+      const netId = getNetId(boardInstance.instanceId, boardPin.pinName);
+      const voltages = netId ? [...voltagesByNet.get(netId) ?? []] : [];
+      if (voltages.some((voltageV) => voltageV > (boardPin.maxVoltageV ?? 3.3))) {
+        reportViolation(RULE_IDS.overvoltageGpio, boardInstance.instanceId,
+          getPinRef(boardInstance.instanceId, boardPin.pinName));
+      }
+    }
+  }
 
-    const echoNetId = getNetId(sensorInstance.instanceId, "ECHO");
-    if (!echoNetId) continue;
-    const echoPin = sensorSpec.pins.find((pin) => pin.pinName === "ECHO");
-    const echoVoltageV = echoPin?.maxVoltageV ?? sensorSpec.maxVoltageV ?? sensorSpec.supplyVoltageV ?? 5;
-
-    for (const boardInstance of boardInstances) {
-      const boardSpec = getSpec(boardInstance.instanceId);
-      if (!boardSpec?.specId.startsWith("raspberry-pi")) continue;
-
-      for (const boardPin of boardSpec.pins) {
-        if (!boardPin.pinName.startsWith("GPIO")) continue;
-        const boardPinNetId = getNetId(boardInstance.instanceId, boardPin.pinName);
-        const boardPinMaxVoltageV = boardPin.maxVoltageV ?? 3.3;
-        if (boardPinNetId === echoNetId && echoVoltageV > boardPinMaxVoltageV) {
-          reportViolation(
-            RULE_IDS.overvoltageGpio,
-            boardInstance.instanceId,
-            getPinRef(boardInstance.instanceId, boardPin.pinName),
-          );
-        }
+  // Connectivity alone is not a signal: input-only nets remain floating.
+  // Bidirectional pins are inputs until the future runtime configures a driver.
+  for (const componentInstance of allComponentInstances) {
+    const componentSpec = getSpec(componentInstance.instanceId);
+    if (!componentSpec) continue;
+    for (const pin of componentSpec.pins) {
+      if (!["digital_in", "analog_in", "digital_io"].includes(pin.pinType)) continue;
+      const pinRef = getPinRef(componentInstance.instanceId, pin.pinName);
+      if (reachableVoltages(netIdByPinRef.get(pinRef)).length === 0) {
+        reportViolation(RULE_IDS.floatingPin, componentInstance.instanceId, pinRef);
       }
     }
   }

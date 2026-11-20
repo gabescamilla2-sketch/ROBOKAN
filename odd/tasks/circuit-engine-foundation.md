@@ -1,0 +1,32 @@
+# Circuit rule engine foundation
+Objective: make the existing Role 4 engine testable and correct the defects identified in the accepted audit. Branch: `role4-circuit`.
+Delivery: ask-on-risk; no push or PR. Runner: Vitest (`npm test`, `npm run test:circuit`), TypeScript (`npm run typecheck:circuit`). Forecast: 500-750 authored lines beyond the preserved baseline; generated lockfile excluded.
+
+## Specs
+- S1. User: "solo como role4-circuit no pongas codex". Create `role4-circuit` and preserve the existing circuit advances in an initial Conventional Commit, as accepted in response to the preceding proposal. Do not publish.
+- S2. User: "ok entonces continuemos". Accepted immediate scope from the preceding recommendation: enable tests and correct the existing electrical rule engine before building the editor. Add a minimal circuit-only test/typecheck harness; do not migrate the static site or edit other roles' modules.
+- S3. Original request: "revisalo y dime que falta por realizar"; accepted continuation applies to the audited defects: common ground must include component digital inputs; GPIO overvoltage must cover direct supplies and only powered sensor outputs; an unrelated or bypassed resistor cannot protect an LED; disconnected powered components must be `unpowered`; an input connected only to other inputs is still floating. Preserve public exports and add valid/invalid regression cases. Keep the simplified educational model; do not implement SPICE.
+- S4. Verify the existing tests, added regressions, and strict circuit typecheck. Document model limitations and the remaining Role 4 work. Coordinate shared contracts with roles 3/5 later; do not silently define `core`, component assets, the UI, breadboard, runtime APIs, or actual runtime voltage propagation in this bounded engine-foundation unit.
+
+## Tasks
+- T0 [S1] inline; complete; commit `9155775`; preserved five pre-existing circuit files; `git diff --cached --check` passed; runnable tests unavailable at that baseline. Native assessment: medium, `under_budget`; no review due. Baseline authored delta: 869 lines.
+- T1 [S2,S4] inline; complete, source commit pending; minimal dev-only harness and instructions. Risk: item 5 (new development dependencies/environment); independent verification required. No meaningful RED for missing infrastructure; run existing tests before changing rules.
+- T2 [S3,S4] inline; complete, source commit pending; regressions RED, minimal rule corrections GREEN, documentation and full circuit checks. Risk: item 3 (shared rule evaluator affects all five existing educational rules); independent verification at feature end.
+
+## Log
+- L1. Original user request: "bien, haremos lo siguiente: primero haremos el apartado del rol 4, para ello te anexo el md de contexto sobre pines y que hace el rol 4, a su vez en la ruta C:\Users\Gabriell\Downloads\ROBOKAN\src\modules\circuit encontraras los archivos avanzados por la persona anterior, al igual que en C:\Users\Gabriell\Downloads\ROBOKAN\tests\circuit-rules.test.ts, revisalo y dime que falta por realizar".
+- L2. User continuation: "ok entonces continuemos". Parent announced the bounded first stage: enable tests and correct the motor before editor work.
+- L3. User branch correction: "solo como role4-circuit no pongas codex". Applied exactly; no remote operations.
+- L4. Actual target is `C:\Users\Gabriell\Downloads\ROBOKAN`; runtime workspace is a different checkout at `C:\Users\Gabriell\Documents\ChatGPT\ROBOKAN`. Original unstaged/untracked advances were explicitly authorized for the baseline commit and preserved unchanged.
+- L5. Route: parent implements inline because this is one coupled engine behavior; no writer-parallelism trigger. Independent verifier required by named risks above. Node 24.13.1/npm 11.8.0 available; no project package manifest existed. Official Vitest setup: https://vitest.dev/guide/ . Package registry reported Vitest 5.1.1 and TypeScript 7.0.2. Dev dependencies only; no React/Vite site migration.
+- L6. Engram project discovery returned `robokan`, but reads/writes reject that project as unknown/not backed by known context. Recovery mirror pending; local document is authoritative.
+
+- L7. Harness installed with `npm install --save-dev --save-exact vitest@5.1.1 typescript@7.0.2 @types/node@24 --ignore-scripts --no-fund --no-audit`. Existing baseline: 8/8 tests PASS; strict circuit typecheck PASS. Added 16 regression scenarios: first RED 13 failures, including two assertions incorrectly counting unrelated board inputs; narrowed those assertions to the LED, without changing their electrical intent. No rule implementation changed before RED.
+
+- L8. Confirmed RED after fixing test isolation: 11 failures / 24 total. Implemented nominal source potentials, supply-aware output eligibility and component statuses, input-inclusive ground checks, direct-source GPIO protection, direct unsafe LED path detection and resistor-path connectivity. GREEN: 24/24 tests and strict typecheck PASS. The source map is private topology analysis, not the pending public runtime signal evaluator.
+- L9. All work stays in the circuit module, its tests, harness and this log. One coherent source work unit is expected to exceed the advisory 400-line heuristic because the harness, shared electrical prerequisites and five regression groups belong together; no artificial splitting or code compression. Independent verification pending before commit.
+
+- L10. Independent verifier: 7/8 own probes PASS, typecheck PASS. Found one candidate regression: powered legacy `analog_out` was mistaken for an input-only net; baseline comparison confirmed it was not floating before. Parent added public-API regression and observed RED (1 failure, 24 skipped), then included legacy analog outputs in driver eligibility without altering shared core types. One bounded correction batch; targeted verifier recheck pending.
+
+- L11. Targeted independent recheck closed the analog blocker: 4/4 and 3/3 own probes PASS, strict typecheck PASS. S1-S4 met for this bounded foundation. Parent suite25/25 PASS and public regression retained. Native assessment/review outcome pending; no push or PR.
+- L12. Runtime harness is N/A: this unit is a pure evaluator exercised through the public module API; the browser/runtime bridge is explicitly out of scope. Rollback boundary: new root circuit harness, circuit README and evaluator/test changes since9155775; no site/core/other-role modifications.
