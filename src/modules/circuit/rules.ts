@@ -177,7 +177,11 @@ export function evaluateCircuitRules(
       const netId = pending.pop()!;
       if (visited.has(netId)) continue;
       visited.add(netId);
-      for (const voltageV of voltagesByNet.get(netId) ?? []) voltages.add(voltageV);
+      const fixedVoltages = voltagesByNet.get(netId);
+      if (fixedVoltages?.size) {
+        for (const voltageV of fixedVoltages) voltages.add(voltageV);
+        continue; // A fixed reference terminates this path; do not cross ground into another load.
+      }
       for (const neighbor of resistorNeighbors.get(netId) ?? []) {
         if (!visited.has(neighbor)) pending.push(neighbor);
       }
@@ -250,26 +254,26 @@ export function evaluateCircuitRules(
       ["digital_in", "digital_out", "digital_io", "analog_in", "analog_out", "analog_io", "pwm_out"].includes(pin.pinType),
     );
 
-    const hasSignalConnectedToBoard = signalPins.some((signalPin) => {
-      const signalNetId = getNetId(componentInstance.instanceId, signalPin.pinName);
-      return signalNetId !== undefined && boardInstances.some((boardInstance) => {
-        const boardSpec = getSpec(boardInstance.instanceId);
-        return boardSpec?.pins.some((boardPin) =>
-          ["digital_in", "digital_out", "digital_io", "analog_in", "analog_out", "pwm_out"].includes(boardPin.pinType)
-          && getNetId(boardInstance.instanceId, boardPin.pinName) === signalNetId,
-        ) ?? false;
-      });
+    const signalConnectedBoards = boardInstances.filter((boardInstance) => {
+      const boardSpec = getSpec(boardInstance.instanceId);
+      return boardSpec?.pins.some((boardPin) =>
+        ["digital_in", "digital_out", "digital_io", "analog_in", "analog_out", "pwm_out"].includes(boardPin.pinType)
+        && signalPins.some((signalPin) =>
+          getNetId(componentInstance.instanceId, signalPin.pinName)
+            === getNetId(boardInstance.instanceId, boardPin.pinName)),
+      ) ?? false;
     });
+    if (signalConnectedBoards.length === 0) continue;
 
-    if (!hasSignalConnectedToBoard) continue;
-
-    const hasCommonGround = componentGroundPins.some((componentGroundPin) => {
-      const componentGroundNetId = getNetId(componentInstance.instanceId, componentGroundPin);
-      return componentGroundNetId !== undefined && boardInstances.some((boardInstance) => {
-        const boardSpec = getSpec(boardInstance.instanceId);
-        return boardSpec ? findPins(boardSpec, isGroundPin).some((boardGroundPin) =>
+    // Every signal-connected board must share this component's ground.
+    // A different board's power return cannot reference an isolated signal.
+    const hasCommonGround = signalConnectedBoards.every((boardInstance) => {
+      const boardSpec = getSpec(boardInstance.instanceId)!;
+      return componentGroundPins.some((componentGroundPin) => {
+        const componentGroundNetId = getNetId(componentInstance.instanceId, componentGroundPin);
+        return componentGroundNetId !== undefined && findPins(boardSpec, isGroundPin).some((boardGroundPin) =>
           getNetId(boardInstance.instanceId, boardGroundPin) === componentGroundNetId,
-        ) : false;
+        );
       });
     });
 

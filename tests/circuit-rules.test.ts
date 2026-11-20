@@ -421,3 +421,65 @@ it("does not treat a powered analog output as an input-only net", () => {
     ruleId: "floating_pin", instanceId: "arduino-uno:1", pinRef: "arduino-uno:1/D10",
   }));
 });
+
+
+it("requires ground from the board driving a servo, not another board", () => {
+  const servoSpec: CircuitRuleSpec = {
+    specId: "servo-sg90", category: "actuator", supplyVoltageV: 5,
+    pins: [
+      { pinName: "SIGNAL", pinType: "digital_in" },
+      { pinName: "VCC", pinType: "power" },
+      { pinName: "GND", pinType: "ground" },
+    ],
+  };
+  const circuitGraph = testCircuit(["arduino-uno", "servo-sg90"], [
+    ["arduino-uno:1/5V", "servo-sg90:1/VCC"],
+    ["arduino-uno:1/GND_1", "servo-sg90:1/GND"],
+    ["arduino-uno:2/D9", "servo-sg90:1/SIGNAL"],
+  ]);
+  circuitGraph.componentInstances = [...circuitGraph.componentInstances,
+    { instanceId: "arduino-uno:2", specId: "arduino-uno" }];
+  const result = evaluateCircuitRules(circuitGraph, [...componentSpecs, servoSpec]);
+  expect(result.violations).toContainEqual(expect.objectContaining({
+    ruleId: "missing_common_ground", instanceId: "servo-sg90:1",
+  }));
+  expect(result.statusByInstance["servo-sg90:1"]).toBe("unpowered");
+  circuitGraph.wires = [...circuitGraph.wires,
+    makeWire("wire:4", "arduino-uno:2/GND_1", "arduino-uno:1/GND_1")];
+  const grounded = evaluateCircuitRules(circuitGraph, [...componentSpecs, servoSpec]);
+  expect(grounded.statusByInstance["servo-sg90:1"]).toBe("ok");
+  expect(grounded.violations.filter((violation) => violation.instanceId === "servo-sg90:1")).toEqual([]);
+});
+
+it("requires ground for every board connected to a sensor signal", () => {
+  const circuitGraph = testCircuit(["arduino-uno", "hc-sr04", "raspberry-pi-4"], [
+    ...poweredSensorWires,
+    ["arduino-uno:1/D9", "hc-sr04:1/TRIG"],
+    ["hc-sr04:1/ECHO", "raspberry-pi-4:1/GPIO17"],
+  ]);
+  const result = evaluateCircuitRules(circuitGraph, componentSpecs);
+  expect(result.violations).toContainEqual(expect.objectContaining({
+    ruleId: "missing_common_ground", instanceId: "hc-sr04:1",
+  }));
+  expect(result.statusByInstance["hc-sr04:1"]).toBe("unpowered");
+  expect(result.statusByInstance["raspberry-pi-4:1"]).toBe("ok");
+  expect(result.violations.some((violation) => violation.ruleId === "overvoltage_gpio")).toBe(false);
+});
+
+it("does not traverse a ground reference to find power through an unrelated load", () => {
+  const circuitGraph = testCircuit(["arduino-uno", "hc-sr04", "raspberry-pi-4", "resistor"], [
+    ["arduino-uno:1/GND_1", "hc-sr04:1/GND"],
+    ["arduino-uno:1/GND_1", "raspberry-pi-4:1/GND_1"],
+    ["hc-sr04:1/VCC", "resistor:1/PIN_A"],
+    ["resistor:1/PIN_B", "arduino-uno:1/GND_1"],
+    ["arduino-uno:1/GND_1", "resistor:2/PIN_A"],
+    ["resistor:2/PIN_B", "arduino-uno:1/5V"],
+    ["hc-sr04:1/ECHO", "raspberry-pi-4:1/GPIO17"],
+  ]);
+  circuitGraph.componentInstances = [...circuitGraph.componentInstances,
+    { instanceId: "resistor:2", specId: "resistor" }];
+  const result = evaluateCircuitRules(circuitGraph, componentSpecs);
+  expect(result.statusByInstance["hc-sr04:1"]).toBe("unpowered");
+  expect(result.statusByInstance["raspberry-pi-4:1"]).toBe("ok");
+  expect(result.violations.some((violation) => violation.ruleId === "overvoltage_gpio")).toBe(false);
+});
