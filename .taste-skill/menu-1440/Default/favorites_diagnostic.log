@@ -1,0 +1,18 @@
+2026-11-20 20:27:13.191: [INFO] CurrentProfilePath: C:\Users\Gabriell\Downloads\ROBOKAN\.taste-skill\menu-1440\Default
+2026-11-20 20:27:13.191: [INFO] Profiles total count: 1
+2026-11-20 20:27:13.191: [INFO] Profile: name=Perfil 1 path=C:\Users\Gabriell\Downloads\ROBOKAN\.taste-skill\menu-1440\Default lastActive=null
+2026-11-20 20:27:13.191: [INFO] LastUsedProfileDir: C:\Users\Gabriell\Downloads\ROBOKAN\.taste-skill\menu-1440\Default
+2026-11-20 20:27:13.191: [INFO] VisibilityChanged: 0
+2026-11-20 20:27:13.204: [INFO] OnDoneLoading sync enabled: 0
+2026-11-20 20:27:13.204: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-11-20 20:27:13.204: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-11-20 20:27:13.204: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-11-20 20:27:13.229: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-11-20 20:27:14.183: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-11-20 20:27:14.185: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-11-20 20:27:14.186: [INFO] Primary account changed.
+2026-11-20 20:27:14.186: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-11-20 20:27:14.191: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-11-20 20:27:14.199: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-11-20 20:27:15.777: [INFO] Sync initialization duration: 1540ms
+2026-11-20 20:27:16.576: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
