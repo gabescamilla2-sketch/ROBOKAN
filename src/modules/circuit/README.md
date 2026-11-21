@@ -31,3 +31,9 @@ This is not a voltage solver. General voltage propagation, resistor dividers, co
 ## Remaining Role 4 work
 
 The editor, breadboard internal connections, runtime `CircuitState.signalByPin`, public `evaluate`/`resolvePin`, help wires, serialization, event integration and working dev page are not implemented by this foundation. Shared types/events and component specs/assets require coordination with roles 3 and 5; none of their modules is changed here.
+
+## Runtime state and topology
+
+Use `evaluate(graph, specs, drives)` for actual signals, or bind `createCircuitApi({ getGraph, getSpecs, getBoardInstanceId, getDrives })` and call its single-argument `resolvePin("D9")`. The graph and catalog remain caller-owned. `connections("D9")` lists other pin references on the same net, for the external hardware bridge. Drivers use full PinRefs; omitted drivers are floating, not an assumed HIGH. `publishCircuitChanges` emits typed state/pin/burn transitions to a caller-provided scoped bus.
+
+Breadboard columns join a-e and f-j separately; numbered columns and positive/negative/top/bottom rails remain isolated. Each declared rail is continuous. A physically split-rail board needs an explicit future connectivity profile. Signal propagation crosses resistors only to find source references, stops at fixed nodes and reports conflicting drivers as floating; it is not a SPICE/current/voltage-divider solver.

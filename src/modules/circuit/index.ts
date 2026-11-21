@@ -14,3 +14,6 @@ export type {
   NetlistResult,
 } from "./netlist";
 export type { CircuitRuleResult, CircuitRuleSpec, RuleViolation } from "./rules";
+
+export { evaluate, resolvePin, createCircuitApi, publishCircuitChanges } from "./api";
+export { breadboardConnections } from "./breadboard";

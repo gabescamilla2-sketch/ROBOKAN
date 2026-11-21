@@ -45,6 +45,7 @@ const RULE_IDS = {
 export function evaluateCircuitRules(
   circuitGraph: CircuitGraphInput,
   componentSpecs: readonly CircuitRuleSpec[],
+  signalOverrides?: Readonly<Record<string, number>>,
 ): CircuitRuleResult {
   const specById = new Map(componentSpecs.map((componentSpec) => [componentSpec.specId, componentSpec]));
   const pinNamesBySpecId = Object.fromEntries(
@@ -161,9 +162,11 @@ export function evaluateCircuitRules(
           ? Number(`${rail[1]}.${rail[2] || "0"}`)
           : componentSpec.supplyVoltageV;
         addVoltage(netId, voltageV);
-      } else if (["digital_out", "analog_out", "pwm_out"].includes(pin.pinType)) {
-        // Explicit board outputs represent a potential HIGH in this static check.
-        addVoltage(netId, componentSpec.supplyVoltageV);
+      } else if (["digital_out", "analog_out", "pwm_out", "digital_io"].includes(pin.pinType)) {
+        const voltageV = signalOverrides === undefined
+          ? (pin.pinType === "digital_io" ? undefined : componentSpec.supplyVoltageV)
+          : signalOverrides[getPinRef(componentInstance.instanceId,pin.pinName)];
+        addVoltage(netId, voltageV);
       }
     }
   }
@@ -294,8 +297,10 @@ export function evaluateCircuitRules(
     const supplyVoltageV = supplyVoltageByInstance.get(componentInstance.instanceId);
     if (supplyVoltageV === undefined) continue;
     for (const pin of componentSpec.pins) {
-      if (["digital_out", "analog_out", "pwm_out"].includes(pin.pinType)) {
-        addVoltage(getNetId(componentInstance.instanceId, pin.pinName), supplyVoltageV);
+      if (["digital_out", "analog_out", "pwm_out"].includes(pin.pinType) || (pin.pinName === "AOUT" && signalOverrides !== undefined)) {
+        const voltageV = signalOverrides === undefined ? supplyVoltageV
+          : signalOverrides[getPinRef(componentInstance.instanceId,pin.pinName)];
+        addVoltage(getNetId(componentInstance.instanceId, pin.pinName), voltageV);
       }
     }
   }

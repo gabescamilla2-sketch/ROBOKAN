@@ -36,8 +36,8 @@ Checks: Vitest circuit suite, strict TypeScript, Vite multipage build and browse
 - S5. Shared types live in core. UI text follows the existing Spanish site and uses i18n keys. No 3D/Python/mission implementation or rewriting other roles. Future world/runtime/catalog integration must be explicitly documented, not claimed implemented.
 
 ## Tasks
-- T1 [S2,S4,S5] inline; complete, commit pending; shared contracts/events/IDs and React/Vite multipage harness. Risk: item5 dependencies; independent final verifier required.
-- T2 [S1,S3,S4] inline; pending; breadboard nets, actual voltage/signal evaluation and bound runtime API. Risk: item3 existing netlist/rule consumers; preserve default legacy behavior and add regressions.
+- T1 [S2,S4,S5] inline; complete; commit `d4f4a84`; shared contracts/events/IDs and React/Vite multipage harness. Risk: item5 dependencies; independent final verifier required.
+- T2 [S1,S3,S4] inline; complete, commit pending; breadboard nets, actual voltage/signal evaluation and bound runtime API. Risk: item3 existing netlist/rule consumers; preserve default legacy behavior and add regressions.
 - T3 [S1,S3,S4] inline; pending; graph interactions, pin geometry, wires, safe serialization and ghost connections with focused tests. Risk: item3 shared graph behavior.
 - T4 [S1,S3,S5] inline; pending; controlled React SVG editor and development catalog/page, responsive interactions. Risk: item5 browser build/runtime.
 - T5 [S2,S5] inline; pending; connect existing project chooser to circuit page without redesigning home; document shared contracts and model limits. Risk: item3 home navigation; verify old chooser behavior.
@@ -50,3 +50,5 @@ Checks: Vitest circuit suite, strict TypeScript, Vite multipage build and browse
 - L4. Prior native lineage review-4e7496cfe712597e remains escalated/native_stop_required; no automatic reviewer/correction restart or receipt claim. REG-001 did not reproduce in3 valid public-API cases;31 baseline tests pass. Existing candidate consent does not approve later candidates.
 
 - L5. T1 RED2 shared-function tests before implementation, GREEN33/33 and strict typecheck/build PASS. React19.3.1 and Vite8.3.8 installed with scripts disabled. Multipage build preserves index.html and copies existing static assets; existing classic-script and dynamic-URL warnings retained for browser verification. Core contracts add canonical pin/state/graph types, scoped events and persisted ID watermarks.
+
+- L6. T2 RED4 API/breadboard tests, GREEN37/37 and strict typecheck PASS. Runtime evaluate uses explicit drivers (absent output floating; LOW0/HIGH1 preserved); legacy evaluateCircuitRules keeps static behavior when its optional override is omitted. Board rails propagate through breadboard banks/rails; sensor outputs require powered state. API reads caller-owned graph/catalog providers, with no stored robot clone. Existing native escalation remains bound; no new review lifecycle initiated.

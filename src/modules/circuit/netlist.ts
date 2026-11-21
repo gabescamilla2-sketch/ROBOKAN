@@ -1,3 +1,4 @@
+import { breadboardConnections } from "./breadboard";
 /**
  * Convierte el cableado del editor en redes eléctricas (nets).
  * Los nombres de campos siguen convenciones-nombres.md. Estos tipos son
@@ -99,6 +100,19 @@ export function buildNetlist(
     return rootPinRef;
   }
 
+  function joinPins(fromPin: string, toPin: string): void {
+    const fromRoot = findRoot(fromPin); const toRoot = findRoot(toPin);
+    if (fromRoot !== toRoot) {
+      const [root,child] = [fromRoot,toRoot].sort(); parentByPinRef.set(child,root);
+    }
+  }
+  for (const instance of componentByInstanceId.values()) {
+    if (instance.specId !== "breadboard") continue;
+    for (const [fromPin,toPin] of breadboardConnections(pinNamesBySpecId[instance.specId] ?? [])) {
+      joinPins(createPinRef(instance.instanceId,fromPin),createPinRef(instance.instanceId,toPin));
+    }
+  }
+
   const wireKeys = new Set<string>();
 
   for (const wire of circuitGraph.wires) {
@@ -118,13 +132,7 @@ export function buildNetlist(
     }
     wireKeys.add(wireKey);
 
-    const fromRootPinRef = findRoot(wire.fromPin);
-    const toRootPinRef = findRoot(wire.toPin);
-    if (fromRootPinRef !== toRootPinRef) {
-      // Lexical root choice keeps output deterministic regardless of wire order.
-      const [rootPinRef, childPinRef] = [fromRootPinRef, toRootPinRef].sort();
-      parentByPinRef.set(childPinRef, rootPinRef);
-    }
+    joinPins(wire.fromPin, wire.toPin);
   }
 
   const pinRefsByRoot = new Map<string, string[]>();
