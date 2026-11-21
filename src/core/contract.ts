@@ -1,12 +1,31 @@
 /** Canonical circuit boundary shared by the editor, component catalog and runtime. */
-export type PinType = "power" | "ground" | "digital_in" | "digital_out" | "digital_io" | "analog_in" | "pwm_out" | "passive";
+export type PinType =
+  | "power"
+  | "ground"
+  | "digital_in"
+  | "digital_out"
+  | "digital_io"
+  | "analog_in"
+  | "pwm_out"
+  | "passive";
 export type ComponentStatus = "ok" | "unpowered" | "burned";
 export type SensorKind = "ultrasonic" | "flame" | "gas" | "infrared";
 export type ActuatorKind = "motor" | "servo" | "led" | "buzzer";
-export type ComponentCategory = "board" | "sensor" | "actuator" | "passive" | "power_source" | "breadboard";
-export type RuleId = "led_without_resistor" | "reversed_polarity" | "missing_common_ground" | "overvoltage_gpio" | "floating_pin";
+export type ComponentCategory =
+  "board" | "sensor" | "actuator" | "passive" | "power_source" | "breadboard";
+export const RULE_IDS = {
+  ledWithoutResistor: "led_without_resistor",
+  reversedPolarity: "reversed_polarity",
+  missingCommonGround: "missing_common_ground",
+  overvoltageGpio: "overvoltage_gpio",
+  floatingPin: "floating_pin",
+} as const;
+export type RuleId = (typeof RULE_IDS)[keyof typeof RULE_IDS];
 export type PinRef = string;
-export interface Point { x: number; y: number }
+export interface Point {
+  x: number;
+  y: number;
+}
 export interface PinSpec {
   pinName: string;
   pinType: PinType;
@@ -36,8 +55,16 @@ export interface ComponentInstance {
   rotationDeg: number;
   mountPointId?: string;
 }
-export interface Wire { wireId: string; fromPin: PinRef; toPin: PinRef; colorHex: string }
-export interface IdSequence { component: number; wire: number }
+export interface Wire {
+  wireId: string;
+  fromPin: PinRef;
+  toPin: PinRef;
+  colorHex: string;
+}
+export interface IdSequence {
+  component: number;
+  wire: number;
+}
 export interface CircuitGraph {
   componentInstances: readonly ComponentInstance[];
   wires: readonly Wire[];
@@ -54,8 +81,16 @@ export type PinSignal =
   | { signalKind: "digital"; voltageV: number; digitalValue: 0 | 1 }
   | { signalKind: "analog"; voltageV: number; analogValue: number }
   | { signalKind: "pwm"; voltageV: number; pwmDuty: number };
-export interface Net { netId: string; pinRefs: string[] }
-export interface RuleViolation { ruleId: RuleId; instanceId: string; pinRef?: PinRef; messageKey: string }
+export interface Net {
+  netId: string;
+  pinRefs: string[];
+}
+export interface RuleViolation {
+  ruleId: RuleId;
+  instanceId: string;
+  pinRef?: PinRef;
+  messageKey: string;
+}
 export interface CircuitState {
   statusByInstance: Record<string, ComponentStatus>;
   signalByPin: Record<PinRef, PinSignal>;
@@ -64,4 +99,6 @@ export interface CircuitState {
   netlistIssues: { code: string; pinRef?: string; wireId?: string }[];
 }
 export type PinDrives = Readonly<Record<PinRef, PinSignal>>;
-export interface CircuitCatalog { listComponents(): readonly ComponentSpec[] }
+export interface CircuitCatalog {
+  listComponents(): readonly ComponentSpec[];
+}

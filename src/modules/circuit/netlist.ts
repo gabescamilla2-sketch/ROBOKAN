@@ -53,7 +53,9 @@ export function createPinRef(instanceId: string, pinName: string): string {
 }
 
 /** Separa una referencia de pin siguiendo el formato compartido. */
-export function parsePinRef(pinRef: string): { instanceId: string; pinName: string } | null {
+export function parsePinRef(
+  pinRef: string,
+): { instanceId: string; pinName: string } | null {
   const separatorIndex = pinRef.indexOf("/");
   if (separatorIndex <= 0 || separatorIndex === pinRef.length - 1) return null;
   if (pinRef.indexOf("/", separatorIndex + 1) !== -1) return null;
@@ -101,15 +103,22 @@ export function buildNetlist(
   }
 
   function joinPins(fromPin: string, toPin: string): void {
-    const fromRoot = findRoot(fromPin); const toRoot = findRoot(toPin);
+    const fromRoot = findRoot(fromPin);
+    const toRoot = findRoot(toPin);
     if (fromRoot !== toRoot) {
-      const [root,child] = [fromRoot,toRoot].sort(); parentByPinRef.set(child,root);
+      const [root, child] = [fromRoot, toRoot].sort();
+      parentByPinRef.set(child, root);
     }
   }
   for (const instance of componentByInstanceId.values()) {
     if (instance.specId !== "breadboard") continue;
-    for (const [fromPin,toPin] of breadboardConnections(pinNamesBySpecId[instance.specId] ?? [])) {
-      joinPins(createPinRef(instance.instanceId,fromPin),createPinRef(instance.instanceId,toPin));
+    for (const [fromPin, toPin] of breadboardConnections(
+      pinNamesBySpecId[instance.specId] ?? [],
+    )) {
+      joinPins(
+        createPinRef(instance.instanceId, fromPin),
+        createPinRef(instance.instanceId, toPin),
+      );
     }
   }
 
@@ -121,7 +130,11 @@ export function buildNetlist(
     if (!fromPin || !toPin) continue;
 
     if (wire.fromPin === wire.toPin) {
-      issues.push({ code: "self_connection", wireId: wire.wireId, pinRef: wire.fromPin });
+      issues.push({
+        code: "self_connection",
+        wireId: wire.wireId,
+        pinRef: wire.fromPin,
+      });
       continue;
     }
 

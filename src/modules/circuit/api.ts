@@ -1,45 +1,196 @@
-import type { CircuitGraph, ComponentSpec, CircuitState, PinDrives, PinSignal, CircuitEventBus, RuleId, ComponentStatus } from "../../core";
+import type {
+  CircuitGraph,
+  ComponentSpec,
+  CircuitState,
+  PinDrives,
+  PinSignal,
+  CircuitEventBus,
+  RuleId,
+  ComponentStatus,
+} from "../../core";
 import { buildNetlist, createPinRef } from "./netlist";
 import { evaluateCircuitRules } from "./rules";
 import { floatingSignal, propagateSignals, validateDrives } from "./voltage";
 /** Pure runtime evaluation; the legacy rules entry keeps its potential-HIGH defaults. */
-export function evaluate(graph: CircuitGraph, specs: readonly ComponentSpec[], drives: PinDrives = {}): CircuitState {
-  const pins = Object.fromEntries(specs.map((spec) => [spec.specId,spec.pins.map((pin) => pin.pinName)]));
-  const {nets} = buildNetlist(graph,pins); validateDrives(drives,nets);
-  const overrides = Object.fromEntries(Object.entries(drives).filter(([,signal]) => signal.signalKind !== "floating").map(([pinRef,signal]) => [pinRef,signal.voltageV]));
-  const result = evaluateCircuitRules(graph,specs,overrides);
-  const statusByInstance = result.statusByInstance as Record<string,ComponentStatus>;
-  for (const instance of graph.componentInstances) if (!specs.some((spec) => spec.specId === instance.specId)) statusByInstance[instance.instanceId] = "unpowered";
-  const signals = propagateSignals(graph,specs,result.nets,drives,statusByInstance);
-  return {...result,statusByInstance,signalByPin:signals.signalByPin,
-    violations:result.violations.map((violation) => ({...violation,ruleId:violation.ruleId as RuleId})),
-    netlistIssues:[...result.netlistIssues,...signals.issues]};
+export function evaluate(
+  graph: CircuitGraph,
+  specs: readonly ComponentSpec[],
+  drives: PinDrives = {},
+): CircuitState {
+  const pins = Object.fromEntries(
+    specs.map((spec) => [spec.specId, spec.pins.map((pin) => pin.pinName)]),
+  );
+  const { nets } = buildNetlist(graph, pins);
+  validateDrives(drives, nets, graph, specs);
+  let activeDrives: PinDrives = { ...drives };
+  const evaluateActive = () =>
+    evaluateCircuitRules(
+      graph,
+      specs,
+      Object.fromEntries(
+        Object.entries(activeDrives)
+          .filter(([, signal]) => signal.signalKind !== "floating")
+          .map(([pinRef, signal]) => [pinRef, signal.voltageV]),
+      ),
+    );
+  let result = evaluateActive();
+  const burned = new Set<string>();
+  const reasons = new Map<string, (typeof result.violations)[number]>();
+  // Effective sources and downstream statuses must describe the same snapshot.
+  // Each pass only removes drivers, so this terminates after at most N removals.
+  // Damage is latched only within this pure evaluation, not across calls.
+  for (let pass = 0; pass <= Object.keys(drives).length; pass++) {
+    for (const [instanceId, status] of Object.entries(result.statusByInstance))
+      if (status === "burned") burned.add(instanceId);
+    for (const violation of result.violations) {
+      if (
+        burned.has(violation.instanceId) &&
+        [
+          "led_without_resistor",
+          "reversed_polarity",
+          "overvoltage_gpio",
+        ].includes(violation.ruleId)
+      ) {
+        reasons.set(
+          `${violation.ruleId}|${violation.instanceId}|${violation.pinRef ?? ""}`,
+          violation,
+        );
+      }
+    }
+    for (const instanceId of burned)
+      result.statusByInstance[instanceId] = "burned";
+    const violations = new Map(
+      result.violations.map((violation) => [
+        `${violation.ruleId}|${violation.instanceId}|${violation.pinRef ?? ""}`,
+        violation,
+      ]),
+    );
+    for (const [key, violation] of reasons) violations.set(key, violation);
+    result.violations = [...violations.values()];
+    const remaining = Object.fromEntries(
+      Object.entries(activeDrives).filter(
+        ([pinRef]) =>
+          result.statusByInstance[pinRef.slice(0, pinRef.lastIndexOf("/"))] ===
+          "ok",
+      ),
+    );
+    if (Object.keys(remaining).length === Object.keys(activeDrives).length)
+      break;
+    activeDrives = remaining;
+    result = evaluateActive();
+  }
+  const statusByInstance = result.statusByInstance as Record<
+    string,
+    ComponentStatus
+  >;
+  for (const instance of graph.componentInstances)
+    if (!specs.some((spec) => spec.specId === instance.specId))
+      statusByInstance[instance.instanceId] = "unpowered";
+  const signals = propagateSignals(
+    graph,
+    specs,
+    result.nets,
+    activeDrives,
+    statusByInstance,
+  );
+  return {
+    ...result,
+    statusByInstance,
+    signalByPin: signals.signalByPin,
+    violations: result.violations.map((violation) => ({
+      ...violation,
+      ruleId: violation.ruleId as RuleId,
+    })),
+    netlistIssues: [...result.netlistIssues, ...signals.issues],
+  };
 }
-export function resolvePin(pinName: string, graph: CircuitGraph, state: CircuitState, boardInstanceId: string): PinSignal {
-  if (!graph.componentInstances.some((instance) => instance.instanceId === boardInstanceId)) throw new Error("Board instance not found");
-  const pinRef = pinName.includes("/") ? pinName : createPinRef(boardInstanceId,pinName);
-  const signal = state.signalByPin[pinRef]; if (!signal) throw new Error(`Unknown pin: ${pinName}`);
-  return {...signal};
+export function resolvePin(
+  pinName: string,
+  graph: CircuitGraph,
+  state: CircuitState,
+  boardInstanceId: string,
+): PinSignal {
+  if (
+    !graph.componentInstances.some(
+      (instance) => instance.instanceId === boardInstanceId,
+    )
+  )
+    throw new Error("Board instance not found");
+  const pinRef = pinName.includes("/")
+    ? pinName
+    : createPinRef(boardInstanceId, pinName);
+  const signal = state.signalByPin[pinRef];
+  if (!signal) throw new Error(`Unknown pin: ${pinName}`);
+  return { ...signal };
 }
-export function publishCircuitChanges(previous: CircuitState | undefined, next: CircuitState, events: CircuitEventBus): void {
-  events.emit("circuit:changed",{circuitState:next});
-  for (const [pinRef,signal] of Object.entries(next.signalByPin)) if (JSON.stringify(previous?.signalByPin[pinRef]) !== JSON.stringify(signal)) events.emit("pin:changed",{pinRef,signal});
-  for (const pinRef of Object.keys(previous?.signalByPin ?? {})) if (!(pinRef in next.signalByPin)) events.emit("pin:changed",{pinRef,signal:floatingSignal()});
-  for (const [instanceId,status] of Object.entries(next.statusByInstance)) {
-    if (status !== "burned" || previous?.statusByInstance[instanceId] === "burned") continue;
-    const violation = next.violations.find((candidate) => candidate.instanceId === instanceId && ["led_without_resistor","reversed_polarity","overvoltage_gpio"].includes(candidate.ruleId));
-    if (violation) events.emit("component:burned",{instanceId,ruleId:violation.ruleId});
+export function publishCircuitChanges(
+  previous: CircuitState | undefined,
+  next: CircuitState,
+  events: CircuitEventBus,
+): void {
+  events.emit("circuit:changed", { circuitState: next });
+  for (const [pinRef, signal] of Object.entries(next.signalByPin))
+    if (
+      JSON.stringify(previous?.signalByPin[pinRef]) !== JSON.stringify(signal)
+    )
+      events.emit("pin:changed", { pinRef, signal });
+  for (const pinRef of Object.keys(previous?.signalByPin ?? {}))
+    if (!(pinRef in next.signalByPin))
+      events.emit("pin:changed", { pinRef, signal: floatingSignal() });
+  for (const [instanceId, status] of Object.entries(next.statusByInstance)) {
+    if (
+      status !== "burned" ||
+      previous?.statusByInstance[instanceId] === "burned"
+    )
+      continue;
+    const violation = next.violations.find(
+      (candidate) =>
+        candidate.instanceId === instanceId &&
+        [
+          "led_without_resistor",
+          "reversed_polarity",
+          "overvoltage_gpio",
+        ].includes(candidate.ruleId),
+    );
+    if (violation)
+      events.emit("component:burned", { instanceId, ruleId: violation.ruleId });
   }
 }
-export function createCircuitApi(context: { getGraph(): CircuitGraph; getSpecs(): readonly ComponentSpec[]; getBoardInstanceId(): string; getDrives?(): PinDrives }) {
-  const current = () => evaluate(context.getGraph(),context.getSpecs(),context.getDrives?.() ?? {});
+export function createCircuitApi(context: {
+  getGraph(): CircuitGraph;
+  getSpecs(): readonly ComponentSpec[];
+  getBoardInstanceId(): string;
+  getDrives?(): PinDrives;
+}) {
+  const current = () =>
+    evaluate(
+      context.getGraph(),
+      context.getSpecs(),
+      context.getDrives?.() ?? {},
+    );
   return {
     evaluate: current,
-    resolvePin: (pinName: string) => resolvePin(pinName,context.getGraph(),current(),context.getBoardInstanceId()),
+    resolvePin: (pinName: string) =>
+      resolvePin(
+        pinName,
+        context.getGraph(),
+        current(),
+        context.getBoardInstanceId(),
+      ),
     connections(pinName: string) {
-      const state = current(); const pinRef = pinName.includes("/") ? pinName : createPinRef(context.getBoardInstanceId(),pinName);
-      resolvePin(pinName,context.getGraph(),state,context.getBoardInstanceId());
-      return state.nets.find((net) => net.pinRefs.includes(pinRef))!.pinRefs.filter((ref) => ref !== pinRef);
+      const state = current();
+      const pinRef = pinName.includes("/")
+        ? pinName
+        : createPinRef(context.getBoardInstanceId(), pinName);
+      resolvePin(
+        pinName,
+        context.getGraph(),
+        state,
+        context.getBoardInstanceId(),
+      );
+      return state.nets
+        .find((net) => net.pinRefs.includes(pinRef))!
+        .pinRefs.filter((ref) => ref !== pinRef);
     },
   };
 }

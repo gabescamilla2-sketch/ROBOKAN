@@ -15,9 +15,15 @@ describe("shared circuit contracts", () => {
     const bus = createCircuitEventBus();
     const received: string[] = [];
     const stop = bus.on("pin:changed", (event) => received.push(event.pinRef));
-    bus.emit("pin:changed", { pinRef: "arduino-uno:1/D9", signal: { signalKind: "digital", voltageV: 5, digitalValue: 1 } });
+    bus.emit("pin:changed", {
+      pinRef: "arduino-uno:1/D9",
+      signal: { signalKind: "digital", voltageV: 5, digitalValue: 1 },
+    });
     stop();
-    bus.emit("pin:changed", { pinRef: "arduino-uno:1/D9", signal: { signalKind: "floating", voltageV: 0 } });
+    bus.emit("pin:changed", {
+      pinRef: "arduino-uno:1/D9",
+      signal: { signalKind: "floating", voltageV: 0 },
+    });
     expect(received).toEqual(["arduino-uno:1/D9"]);
   });
 });
