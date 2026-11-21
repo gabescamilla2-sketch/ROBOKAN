@@ -1,5 +1,128 @@
 {
   "circuit": {
-    "title": "Laboratorio de circuitos"
+    "title": "Laboratorio de circuitos",
+    "home": "Volver al inicio",
+    "subtitle": "Conecta componentes y observa sus señales eléctricas.",
+    "catalog": "Componentes",
+    "search": "Buscar componentes",
+    "add": "Añadir",
+    "canvas": "Lienzo del circuito. Selecciona dos pines para conectarlos.",
+    "instructions": "Selecciona dos pines para crear un cable. Arrastra las piezas para moverlas.",
+    "rotate": "Rotar pieza",
+    "remove": "Eliminar selección",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "fit": "Ajustar vista",
+    "help": "Mostrar conexiones de ayuda",
+    "save": "Guardar en este equipo",
+    "restore": "Recuperar guardado",
+    "download": "Descargar JSON",
+    "open": "Abrir archivo",
+    "saved": "Circuito guardado en este equipo.",
+    "loaded": "Circuito cargado.",
+    "downloaded": "Archivo de circuito preparado.",
+    "saveError": "No se pudo guardar el circuito. Descarga una copia JSON.",
+    "loadError": "No se pudo cargar: el archivo no es un circuito válido para este catálogo.",
+    "noSaved": "No hay un circuito guardado en este equipo.",
+    "select": "Seleccionar",
+    "selection": "Selección",
+    "noneSelected": "Selecciona una pieza o un cable para inspeccionarlo.",
+    "pins": "Pines y señales",
+    "floating": "Sin señal",
+    "wire": "Cable",
+    "color": "Color del cable",
+    "from": "Pin de origen",
+    "to": "Pin de destino",
+    "connect": "Conectar pines",
+    "connectionError": "No se pudo conectar. Elige dos pines distintos y existentes.",
+    "cancel": "Cancelar conexión",
+    "armed": "Elige el segundo pin para terminar el cable.",
+    "health": "Estado eléctrico",
+    "healthy": "Sin daños detectados",
+    "issues": "Problemas de conexión",
+    "freePins": "Pines sin señal",
+    "noIssues": "No se detectan daños eléctricos.",
+    "unpowered": "Piezas sin alimentación",
+    "burned": "Piezas quemadas",
+    "signals": "Salida de la placa",
+    "outputPin": "Pin de salida",
+    "low": "Enviar LOW (0)",
+    "high": "Enviar HIGH (1)",
+    "release": "Dejar flotante",
+    "pwm": "Ciclo PWM (0–255)",
+    "noBoard": "Añade una placa para probar señales.",
+    "example": "Cargar ejemplo conectado",
+    "project": "Proyecto",
+    "projectAvoider": "Sensor ultrasónico y LED",
+    "projectLine": "Sensor infrarrojo y LED",
+    "projectBlank": "Circuito desde cero",
+    "catalogNotice": "Catálogo de desarrollo. El catálogo de producción se entrega desde el rol de componentes.",
+    "runtimeNotice": "Esta vista prueba el circuito. El mundo 3D y Python todavía no están integrados.",
+    "selectedPin": "Pin seleccionado",
+    "signalKind": "Señal",
+    "removeWire": "Eliminar cable",
+    "keyboardHelp": "Teclado: Enter conecta un pin; las flechas mueven la pieza; R la rota; Supr la elimina; Escape cancela.",
+    "invalidData": "El circuito contiene referencias o señales incompatibles.",
+    "loading": "Preparando circuito",
+    "paletteHint": "Arrastra una pieza al lienzo o pulsa para añadirla.",
+    "parts": "Piezas",
+    "wires": "Cables",
+    "connected": "Conexión creada."
+  },
+  "errors": {
+    "led_without_resistor": "El LED está conectado sin una resistencia en serie. Añade una resistencia para protegerlo.",
+    "reversed_polarity": "La alimentación está invertida. Revisa los pines positivos y de tierra.",
+    "missing_common_ground": "Esta pieza necesita compartir GND con cada placa conectada a sus señales.",
+    "overvoltage_gpio": "Este GPIO recibe más voltaje del permitido. Revisa la alimentación antes de continuar.",
+    "floating_pin": "Este pin no recibe una señal definida."
+  },
+  "status": {
+    "ok": "Correcto",
+    "unpowered": "Sin alimentación",
+    "burned": "Quemado"
+  },
+  "components": {
+    "arduino-uno": {
+      "name": "Arduino Uno"
+    },
+    "raspberry-pi-4": {
+      "name": "Raspberry Pi 4"
+    },
+    "hc-sr04": {
+      "name": "Sensor ultrasónico HC-SR04"
+    },
+    "flame-sensor": {
+      "name": "Sensor de flama"
+    },
+    "mq2-gas-sensor": {
+      "name": "Sensor de gas MQ-2"
+    },
+    "ir-line-sensor": {
+      "name": "Sensor infrarrojo"
+    },
+    "led": {
+      "name": "LED"
+    },
+    "resistor": {
+      "name": "Resistencia"
+    },
+    "buzzer": {
+      "name": "Zumbador"
+    },
+    "servo-sg90": {
+      "name": "Servo SG90"
+    },
+    "dc-motor": {
+      "name": "Motor DC"
+    },
+    "motor-driver-l298n": {
+      "name": "Controlador L298N"
+    },
+    "battery-9v": {
+      "name": "Batería de 9 V"
+    },
+    "breadboard": {
+      "name": "Protoboard"
+    }
   }
 }
