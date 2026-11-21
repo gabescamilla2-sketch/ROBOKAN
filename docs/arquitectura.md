@@ -5,7 +5,7 @@ Todo corre en el navegador. Sin backend en el MVP.
 ## Flujo
 Blockly -> instrucciones estructuradas -> runtime TypeScript -> validación del circuito 2D -> mundo 3D.
 
-Blockly también genera C++ equivalente a Arduino para mostrarlo al estudiante. El programa principal se representa dentro de `void loop()`. El runtime ejecuta las instrucciones estructuradas y permite ejecutar, pausar, reanudar y detener. Skulpt se retira del diseño.
+Blockly también genera C++ equivalente a Arduino para mostrarlo al estudiante. El programa principal se representa dentro de `void loop()`. El runtime ejecuta las instrucciones estructuradas y permite ejecutar, pausar, reanudar y detener. La ejecución del simulador usa instrucciones estructuradas en TypeScript.
 
 ## Regla de oro
 El robot es UN solo objeto (RobotDefinition en core).

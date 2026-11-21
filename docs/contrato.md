@@ -33,4 +33,4 @@ Las definiciones compartidas de circuito viven en `src/core/contract.ts`, con ex
 
 El bus creado con `createCircuitEventBus` emite `circuit:changed` (`circuitState`), `pin:changed` (`pinRef`, `signal`) y `component:burned` (`instanceId`, `ruleId`). También tipa `robot:changed` y `world:reset`. Las suscripciones se eliminan mediante la función devuelta por `on`. Los eventos no crean una segunda copia persistente del robot.
 
-Pendiente de los otros roles: catálogo/SVG/modelos de producción, comportamiento de componentes, runtime Python, lecturas del mundo y consumo final de estos eventos. El catálogo en `src/dev/circuit-fixtures.ts` solo sirve para desarrollo.
+Pendiente de los otros roles: catálogo/SVG/modelos de producción, comportamiento de componentes, runtime TypeScript de instrucciones, lecturas del mundo y consumo final de estos eventos. El catálogo en `src/dev/circuit-fixtures.ts` solo sirve para desarrollo.

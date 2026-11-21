@@ -1,7 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { generateCppProgram, generateInstructions, type ProgramBlock } from "../src/modules/blocks";
+import { validateProgram } from "../src/modules/blocks";
 
 describe("block program outputs", () => {
+  it("rejects conflicting pin roles while allowing sequential LED writes and repeated sensor reads", () => {
+    const sensor = { type: "read_distance", trigPinName: "D9", echoPinName: "D10", resultId: "distance_cm" } as const;
+    expect(validateProgram([sensor, { type: "digital_write", pinName: "D10", digitalValue: 1 }])).toContain("pinConflict");
+    expect(validateProgram([sensor, { ...sensor, trigPinName: "D10", echoPinName: "D9" }])).toContain("pinConflict");
+    expect(validateProgram([sensor, sensor, { type: "digital_write", pinName: "D3", digitalValue: 1 }, { type: "digital_write", pinName: "D3", digitalValue: 0 }])).toEqual([]);
+  });
+  it("rejects conflicting sensor pins and invalid actuator fields", () => {
+    expect(validateProgram([
+      { type: "read_distance", trigPinName: "D9", echoPinName: "D9", resultId: "distance_cm" },
+      { type: "motor_write", instanceId: "", speedPct: 101 },
+      { type: "buzzer_write", instanceId: "buzzer:1", isOn: true, frequencyHz: NaN },
+    ])).toEqual(["samePins", "invalidMotor", "invalidSpeed", "invalidFrequency"]);
+  });
+
+  it("accepts valid blocks and rejects an unsupported pin", () => {
+    expect(validateProgram([{ type: "wait", delayMs: 1000 }, { type: "digital_write", pinName: "D3", digitalValue: 1 }])).toEqual([]);
+    expect(validateProgram([{ type: "digital_write", pinName: "GPIO17", digitalValue: 1 }])).toEqual(["invalidPin"]);
+  });
   it("updates the C++ and instructions when wait duration changes", () => {
     expect(generateCppProgram([{ type: "wait", delayMs: 5000 }])).toContain("delay(5000);");
     expect(generateInstructions([{ type: "wait", delayMs: 5000 }])).toEqual([{ op: "wait", delayMs: 5000 }]);

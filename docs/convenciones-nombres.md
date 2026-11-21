@@ -21,7 +21,7 @@
 | Archivos de componentes React | `PascalCase` | `CircuitEditor.tsx` |
 | Ids de componentes, plantillas, arenas, misiones | `kebab-case` | `hc-sr04`, `arena-line-track` |
 | Nombres visibles al usuario | **Nunca en código**: claves de i18n | `t('components.hc-sr04.name')` |
-| Nombres que ve el niño en Python | `snake_case` | `digital_write`, `distance` |
+| Funciones del C++ mostrado | API Arduino o auxiliares `robokan_*` | `digitalWrite`, `robokan_distance_cm` |
 
 **Prohibido:** abreviar sin necesidad (`cmp`, `cfg`, `pwr`), mezclar español e inglés en un identificador, y usar nombres genéricos (`data`, `item`, `obj`, `val`, `temp`).
 
@@ -248,7 +248,7 @@ El Rol 3 lee `sensor.origin` y la orientación +Z de ese nodo para lanzar rayos 
 | `boardInstanceId` | `string` | Placa principal |
 | `componentInstances` | `ComponentInstance[]` | Piezas colocadas |
 | `wires` | `Wire[]` | Cables del circuito |
-| `programSource` | `string` | Código Python actual |
+| `programSource` | `string` | Código C++ equivalente actual |
 
 `ComponentInstance`:
 
@@ -288,21 +288,19 @@ Los tipos de payload se llaman `<Evento>Event` en `PascalCase`: `PinChangedEvent
 
 ---
 
-## 9. Python (lo que escribe el niño) ↔ TypeScript
+## 9. C++ visible e instrucciones TypeScript
 
-Los nombres de Python son `snake_case` y **no cambian** (los ve el niño). Cada función se mapea a un método `camelCase` del `HardwareApi`.
+Blockly produce C++ equivalente y una lista tipada de instrucciones. El runtime ejecuta esa lista contra el circuito y el mundo. El C++ mostrado usa setup() y loop().
 
-| Python | TypeScript (`HardwareApi`) | Argumentos | Devuelve |
-|---|---|---|---|
-| `digital_read(pin)` | `digitalRead(pinName)` | nombre del pin de la placa, texto: `"D3"` | `0` o `1` |
-| `digital_write(pin, value)` | `digitalWrite(pinName, digitalValue)` | `"D3"`, `0` o `1` | — |
-| `analog_read(pin)` | `analogRead(pinName)` | `"A0"` | `0` a `1023` |
-| `pwm_write(pin, duty)` | `pwmWrite(pinName, pwmDuty)` | `"D5"`, `0` a `255` | — |
-| `distance(trig, echo)` | `readDistance(trigPinName, echoPinName)` | `"D9"`, `"D10"` | centímetros (`number`) |
-| `servo_write(pin, angle)` | `servoWrite(pinName, angleDeg)` | `"D6"`, `0` a `180` | — |
-| `sleep(seconds)` | `sleep(delayMs)` | segundos (el niño usa segundos) | — |
+| C++ mostrado | Instruction | Unidades |
+|---|---|---|
+| delay(1000); | wait, delayMs | Milisegundos |
+| digitalWrite(3, HIGH); | digital_write, pinName, digitalValue | D3 se muestra como 3, valores 0 o 1 |
+| robokan_motor_write(instanceId, speedPct); | motor_write, instanceId, speedPct | -100 a 100 |
+| robokan_distance_cm(trig, echo); | read_distance, trigPinName, echoPinName, resultId | Centímetros |
+| robokan_buzzer_write(instanceId, isOn, frequencyHz); | buzzer_write, instanceId, isOn, frequencyHz | Hertz |
 
-**Regla:** el `pin` que usa el niño es el **`pinName` de la placa** (`"D3"`, `"A0"`, `"GPIO17"`). El circuito (Rol 4) lo resuelve con `resolvePin` al `PinRef` completo, siguiendo los cables hasta el sensor o actuador real.
+Las funciones robokan_* son auxiliares educativas cuya implementación física requiere acordar componentes y pines. Las instrucciones usan pinName de la placa e instanceId según el contrato de core. Rol 4 valida el circuito y expone connections() para localizar pines conectados. resolvePin() devuelve la señal eléctrica. Rol 3 aplica comandos al mundo y devuelve lecturas.
 
 ---
 
@@ -337,12 +335,12 @@ Carpetas de modelos: `boards`, `sensors`, `actuators`, `robots`, `scenery`.
 2. El niño arrastra la pieza. Se crea la instancia `instanceId: 'hc-sr04:1'` con `circuitPosition` y `mountPointId: 'front-center'`.
 3. El niño conecta `hc-sr04:1/TRIG` con `arduino-uno:1/D9` y `hc-sr04:1/ECHO` con `arduino-uno:1/D10`, creando `wire:1` y `wire:2`.
 4. **Rol 4** ejecuta `evaluate(...)`: revisa que `VCC` y `GND` estén bien conectados. Si están invertidos, marca `statusByInstance['hc-sr04:1'] = 'burned'` y una violación `ruleId: 'reversed_polarity'`.
-5. El código del niño: `distance("D9", "D10")`. El runtime llama a `readDistance('D9', 'D10')`.
-6. **Rol 4** resuelve con `resolvePin` que `D9` y `D10` llegan a `hc-sr04:1/TRIG` y `hc-sr04:1/ECHO`, y devuelve que el sensor es `hc-sr04:1`.
+5. Blockly genera una instrucción `read_distance` con `trigPinName: "D9"`, `echoPinName: "D10"` y un `resultId`.
+6. **Rol 4** consulta las conexiones del circuito y valida que `D9` y `D10` llegan a `hc-sr04:1/TRIG` y `hc-sr04:1/ECHO`, y devuelve que el sensor es `hc-sr04:1`.
 7. **Rol 3** ejecuta `world.query.ultrasonicDistanceCm('hc-sr04:1')`: lanza un rayo desde el nodo `sensor.origin` del GLB, en dirección +Z, y devuelve por ejemplo `23.5` (cm).
-8. El Python recibe `23.5`.
+8. El runtime guarda `23.5` bajo el `resultId` de la instrucción.
 
-Si el sensor está quemado o sin energía, el paso 7 **no se ejecuta**: `readDistance` devuelve el valor de "sin lectura" según el estado del paso 4.
+Si el sensor está quemado o sin energía, el paso 7 **no se ejecuta**: el adaptador de lectura devuelve el valor de "sin lectura" según el estado del paso 4.
 
 ---
 
@@ -366,6 +364,6 @@ Para mantener la regla de "identificadores en inglés", este documento fija:
 | Estado `sin_energia` | `unpowered` |
 | Estado `quemado` | `burned` |
 | Tipos de pin en español (alimentación, tierra, entrada digital...) | `power`, `ground`, `digital_in`, `digital_out`, `analog_in`, `pwm_out` (más `digital_io` y `passive`) |
-| `distance`, `servo` en `HardwareApi` | `readDistance` y `servoWrite` (en Python: `distance` y `servo_write`) |
+| Lectura de distancia | `read_distance` en instrucciones y `robokan_distance_cm` en C++ visible |
 
 Cuando se implemente `src/core/`, usar estos nombres. El texto en español de esos estados se muestra solo al usuario, desde i18n.

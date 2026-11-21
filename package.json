@@ -11,7 +11,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/home-menu.test.cjs && vitest run --exclude '**/*.cjs'",
-    "test:circuit": "vitest run",
+    "test:circuit": "vitest run tests/circuit-",
     "typecheck:circuit": "tsc --project tsconfig.circuit.json --noEmit",
     "format:check": "prettier --check \"src/core/**/*.ts\" \"src/modules/circuit/*.{ts,tsx,css}\" \"src/dev/circuit-*.ts\" \"src/dev/dev-circuit.tsx\" \"tests/circuit-*.test.ts\""
   },

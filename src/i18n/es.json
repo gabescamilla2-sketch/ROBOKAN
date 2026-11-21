@@ -1,6 +1,46 @@
 {
   "blocks": {
     "title": "Programar con bloques",
+    "unsavedChanges": "Cambios sin guardar",
+    "noPendingChanges": "Sin cambios pendientes",
+    "confirmReplace": "Tienes cambios sin guardar. ¿Quieres descartarlos y reemplazar el programa?",
+    "export": "Exportar JSON",
+    "import": "Importar JSON",
+    "exported": "Archivo de programa preparado para descargar.",
+    "imported": "Programa importado. Pulsa Guardar programa para conservarlo en este navegador.",
+    "exportError": "No se pudo exportar el programa.",
+    "importError": "No se pudo importar. Usa un JSON de programa ROBOKAN versión 1 de hasta 1 MB. Se conservó el programa anterior.",
+    "home": "Volver al inicio",
+    "blockCount": "bloques en tu programa",
+    "connectHint": "Arrastra y conecta tus bloques",
+    "output": "Tu código",
+    "copy": "Copiar",
+    "copied": "Código copiado.",
+    "copyError": "No se pudo copiar. Puedes seleccionar el código y copiarlo.",
+    "fixErrors": "Corrige los campos indicados para ver tu código.",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "fit": "Ajustar vista",
+    "storageControls": "Guardar y recuperar programa",
+    "save": "Guardar programa",
+    "restore": "Recuperar guardado",
+    "saved": "Programa guardado en este navegador.",
+    "restored": "Programa recuperado.",
+    "noSaved": "Todavía no hay un programa guardado.",
+    "saveError": "No se pudo guardar. Comprueba el almacenamiento del navegador.",
+    "restoreError": "No se pudo recuperar el programa guardado. Se conservó el programa anterior.",
+    "validation": {
+      "pinConflict": "Un pin está asignado a funciones incompatibles entre bloques. Revisa LED, TRIG y ECHO.",
+      "invalidWait": "La espera debe estar entre 0 y 86400 segundos.",
+      "invalidMotor": "Usa un identificador de motor como dc-motor:1.",
+      "invalidSpeed": "La velocidad debe estar entre -100 y 100.",
+      "invalidPin": "Selecciona un pin D0–D13 o A0–A5.",
+      "samePins": "TRIG y ECHO deben usar pines distintos.",
+      "invalidResult": "Usa distance_cm o distance_cm seguido de un sufijo numérico.",
+      "invalidDigital": "El valor del LED debe ser 0 o 1.",
+      "invalidBuzzer": "Usa un identificador de buzzer como buzzer:1.",
+      "invalidFrequency": "La frecuencia debe estar entre 1 y 20000 Hz."
+    },
     "instructions": "Conecta los bloques y edita sus campos para ver el C++ y las instrucciones. Los programas de Esperar se repiten hasta pulsar Detener.",
     "motorMessage": "Mover motor %1 velocidad %2 %",
     "distanceMessage": "Leer distancia TRIG %1 ECHO %2 guardar en %3",
@@ -20,7 +60,8 @@
     "waitMessage": "Esperar %1 segundos",
     "cpp": "C++ equivalente",
     "program": "Instrucciones del simulador",
-    "status": { "idle": "Listo", "running": "En ejecución", "paused": "Pausado", "completed": "Completado" },
+    "status": { "idle": "Listo", "running": "En ejecución", "paused": "Pausado", "completed": "Completado" }
+  },
   "circuit": {
     "title": "Laboratorio de circuitos",
     "home": "Volver al inicio",
@@ -79,7 +120,7 @@
     "projectLine": "Sensor infrarrojo y LED",
     "projectBlank": "Circuito desde cero",
     "catalogNotice": "Catálogo de desarrollo. El catálogo de producción se entrega desde el rol de componentes.",
-    "runtimeNotice": "Esta vista prueba el circuito. El mundo 3D y Python todavía no están integrados.",
+    "runtimeNotice": "Esta vista prueba el circuito. La integración con el mundo 3D y el runtime TypeScript de instrucciones sigue pendiente. El editor de bloques muestra C++ equivalente.",
     "selectedPin": "Pin seleccionado",
     "signalKind": "Señal",
     "removeWire": "Eliminar cable",
@@ -147,5 +188,4 @@
       "name": "Protoboard"
     }
   }
-}
 }

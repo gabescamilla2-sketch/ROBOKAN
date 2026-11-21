@@ -30,13 +30,13 @@ The development page accepts a production catalog through the same `ComponentSpe
 
 Drag or tap palette pieces; drag components to move on a 20-unit grid. Click two pins or use the source/destination selects to connect them. Select wires to delete them. Keyboard: arrows move the selected component, R rotates it, Delete removes it, Escape cancels a pending wire. Zoom controls/wheel and background panning operate on the SVG viewport. Pin tooltips and inspector rows show names and volts. Optional ghost wires mark missing expected connections.
 
-**Guardar en este equipo** stores the circuit locally; **Recuperar guardado** replaces it only after validation. JSON download/import uses a version1 envelope. Loading validates collection limits, catalog membership, unique IDs, finite positions, quarter-turn rotations, known pin refs, wire colors and ID allocation watermarks. It never imports Python/program text or executes file content. Browser storage can fail; export remains a separate fallback.
+**Guardar en este equipo** stores the circuit locally; **Recuperar guardado** replaces it only after validation. JSON download/import uses a version1 envelope. Loading validates collection limits, catalog membership, unique IDs, finite positions, quarter-turn rotations, known pin refs, wire colors and ID allocation watermarks. It never imports C++/program text or executes file content. Browser storage can fail; export remains a separate fallback.
 
 ## Electrical limits
 
 Boards/batteries supply nominal rails. Breadboard columns join a-e and f-j separately; numbered columns, positive/negative and top/bottom rails remain isolated. Each declared rail is continuous; physically split rails need a future connectivity profile. Resistor paths stop at fixed references; conflicting drivers are floating and reported. There is no SPICE/current solver, resistor-divider calculation, motor physics or synthetic world sensing. Sensor values must be supplied by the world/runtime through valid pin drives; unpowered/burned outputs do not propagate.
 
-Burned state is recomputed per snapshot; persistent damage/reset semantics belong to the simulation owner. The typed bridge and controlled editor are ready for other roles, but no Skulpt, mission engine, production component registry or world implementation is claimed.
+Burned state is recomputed per snapshot; persistent damage/reset semantics belong to the simulation owner. The typed bridge and controlled editor are ready for other roles, but no C++ compiler, mission engine, production component registry or world implementation is claimed.
 
 ## Verification status
 

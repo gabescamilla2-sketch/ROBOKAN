@@ -6,7 +6,7 @@ export default defineConfig({
   cacheDir: join(tmpdir(), "robokan-circuit-vitest-cache"),
   test: {
     environment: "node",
-    include: ["tests/circuit-*.test.ts"],
+    include: ["tests/**/*.test.ts"],
     watch: false,
   },
 });
