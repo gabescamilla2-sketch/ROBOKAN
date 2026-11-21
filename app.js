@@ -11,12 +11,17 @@ dialog.addEventListener('click', event => {
   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
 });
 
-// Selection stays in this prototype session; it does not create or persist projects.
+// Preserve project selection and open the matching local circuit workbench explicitly.
 const projectOptions = [...document.querySelectorAll('[data-project]')];
 const selectionStatus = document.querySelector('#selection-status');
+const openCircuit = document.querySelector('#open-circuit');
 projectOptions.forEach(option => {
   option.addEventListener('click', () => {
     projectOptions.forEach(candidate => candidate.setAttribute('aria-pressed', String(candidate === option)));
     selectionStatus.textContent = 'Seleccionaste: ' + option.dataset.title + '.';
+    if (openCircuit) {
+      openCircuit.href = './circuit.html?project=' + encodeURIComponent(option.dataset.project);
+      openCircuit.hidden = false;
+    }
   });
 });

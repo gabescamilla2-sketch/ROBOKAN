@@ -13,4 +13,39 @@ export type {
   NetlistIssueCode,
   NetlistResult,
 } from "./netlist";
-export type { CircuitRuleResult, CircuitRuleSpec, RuleViolation } from "./rules";
+export type {
+  CircuitRuleResult,
+  CircuitRuleSpec,
+  RuleViolation,
+} from "./rules";
+
+export {
+  evaluate,
+  resolvePin,
+  createCircuitApi,
+  publishCircuitChanges,
+} from "./api";
+export { breadboardConnections } from "./breadboard";
+export {
+  addComponent,
+  moveComponent,
+  rotateComponent,
+  removeComponent,
+  connectPins,
+  removeWire,
+} from "./interactions";
+export {
+  pinPosition,
+  resolvePinPosition,
+  hitTestPin,
+  componentSize,
+} from "./pins";
+export { orthogonalPath, missingGhostWires } from "./wiring";
+export {
+  serializeCircuit,
+  deserializeCircuit,
+  MAX_CIRCUIT_BYTES,
+} from "./serialize";
+export { CircuitEditor } from "./CircuitEditor";
+export type { CircuitEditorProps } from "./CircuitEditor";
+export { t as circuitText } from "./i18n";

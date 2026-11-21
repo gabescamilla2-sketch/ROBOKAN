@@ -22,3 +22,15 @@ La interfaz de resultados de lectura y errores eléctricos sigue pendiente de ac
 
 ## 5. Eventos
 pin cambiado, componente quemado, mision completada, error de conexion.
+
+## 6. Circuito: pines, estado y eventos implementados
+
+Las definiciones compartidas de circuito viven en `src/core/contract.ts`, con exportación pública desde `src/core/index.ts`. Incluyen `ComponentSpec`, `PinSpec`, `ComponentInstance`, `Wire`, `CircuitGraph`, `RobotDefinition`, `PinSignal`, `CircuitState` y las enumeraciones acordadas. Los IDs se generan con `createIdAllocator`; el watermark opcional `idSequence` conserva los contadores al guardar, incluso después de eliminar piezas.
+
+`PinRef` conserva el formato `<instanceId>/<pinName>`. El circuito recibe el catálogo por parámetro; no importa archivos internos del módulo de componentes. `createCircuitApi` recibe getters del grafo, catálogo, placa y señales. Su método `resolvePin(pinName)` devuelve `PinSignal`; `connections(pinName)` permite que el puente de hardware identifique sensores y actuadores conectados. El dueño de la simulación aporta las señales y las lecturas del mundo.
+
+`CircuitEditor` es controlado: recibe `graph`, `specs`, `onChange` y señales opcionales. El dueño conserva un único `RobotDefinition` y combina los cambios de piezas/cables sin perder chasis, montaje ni programa. La página de desarrollo demuestra ese patrón; no sustituye el shell final de los otros roles.
+
+El bus creado con `createCircuitEventBus` emite `circuit:changed` (`circuitState`), `pin:changed` (`pinRef`, `signal`) y `component:burned` (`instanceId`, `ruleId`). También tipa `robot:changed` y `world:reset`. Las suscripciones se eliminan mediante la función devuelta por `on`. Los eventos no crean una segunda copia persistente del robot.
+
+Pendiente de los otros roles: catálogo/SVG/modelos de producción, comportamiento de componentes, runtime Python, lecturas del mundo y consumo final de estos eventos. El catálogo en `src/dev/circuit-fixtures.ts` solo sirve para desarrollo.
