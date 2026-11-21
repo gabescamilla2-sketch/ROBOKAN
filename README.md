@@ -1,4 +1,4 @@
-# RoboLab
+# ROBOKAN
 
 Simulador educativo de robotica y electronica en el navegador.
 Bloques con C++ equivalente + circuito 2D + mundo 3D con fisica.
