@@ -1,4 +1,5 @@
 import { componentTypes, artwork } from './circuits-art.js';
+import { projects, DEFAULT_PROJECT } from './circuit-projects.js';
 import { importCircuitWorkbench } from './src/dev/import-circuit-workbench.ts';
 import { circuitSpecs } from './src/dev/circuit-fixtures.ts';
 import { evaluate } from './src/modules/circuit/api.ts';
@@ -10,20 +11,8 @@ const colors = [
   { name:'Turquesa',value:'#20C997' }, { name:'Morado',value:'#8B72E8' },
   { name:'Azul',value:'#2878F0' }, { name:'Amarillo',value:'#FFB84D' }
 ];
-const initial = {
-  components:[{id:'uno-1',type:'uno',x:115,y:305},{id:'sensor-1',type:'ultrasonic',x:670,y:166},{id:'breadboard-1',type:'breadboard',x:640,y:444},{id:'motor-1',type:'motor',x:150,y:605},{id:'motor-2',type:'motor',x:330,y:605}],
-  wires:[
-    {id:'wire-1',from:{component:'uno-1',pin:'5V'},to:{component:'sensor-1',pin:'VCC'},color:'#F16C75'},
-    {id:'wire-2',from:{component:'uno-1',pin:'GND1'},to:{component:'sensor-1',pin:'GND'},color:'#17243B'},
-    {id:'wire-3',from:{component:'uno-1',pin:'D9'},to:{component:'sensor-1',pin:'TRIG'},color:'#20C997'},
-    {id:'wire-4',from:{component:'uno-1',pin:'D10'},to:{component:'sensor-1',pin:'ECHO'},color:'#8B72E8'},
-    // Drive motors: motor-1 is the left wheel, motor-2 the right wheel in the 3D world.
-    {id:'wire-5',from:{component:'uno-1',pin:'5V'},to:{component:'motor-1',pin:'MOTOR_POSITIVE'},color:'#F16C75'},
-    {id:'wire-6',from:{component:'uno-1',pin:'GND2'},to:{component:'motor-1',pin:'MOTOR_NEGATIVE'},color:'#17243B'},
-    {id:'wire-7',from:{component:'uno-1',pin:'5V'},to:{component:'motor-2',pin:'MOTOR_POSITIVE'},color:'#F16C75'},
-    {id:'wire-8',from:{component:'uno-1',pin:'GND2'},to:{component:'motor-2',pin:'MOTOR_NEGATIVE'},color:'#17243B'}
-  ]
-};
+// Starter: the avoider exercise. state.project names the loaded exercise.
+const initial = { project: DEFAULT_PROJECT, ...structuredClone(projects[DEFAULT_PROJECT].circuit) };
 let state = structuredClone(initial);
 let selection = null;
 let pending = null;
@@ -43,13 +32,17 @@ let sequence = Date.now();
 
 const icon = id => `<svg aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const escapeText = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const status = message => { $('#status-message').textContent = message; };
+let simulationSummary = '';
+// With the simulation running, its result always leads the status bar.
+const status = message => { $('#status-message').textContent = simulationRunning && simulationSummary ? simulationSummary + (message ? ` · ${message}` : '') : message; };
 const snapshot = () => JSON.stringify(state);
 
 function validateProject(value) {
   if (!value || !Array.isArray(value.components) || !Array.isArray(value.wires) || value.components.length > 60 || value.wires.length > 200) return false;
+  if (value.project !== undefined && typeof value.project !== 'string') return false;
   const ids = new Set();
   for (const component of value.components) {
+    if (component?.color !== undefined && (component.type !== 'led' || !Object.hasOwn(LED_COLORS, component.color))) return false;
     const scale = component?.scale ?? 1;
     if (!component || typeof component.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(component.id) || ids.has(component.id) || !Object.hasOwn(componentTypes, component.type) || !Number.isFinite(component.x) || !Number.isFinite(component.y) || !Number.isFinite(scale) || scale < 0.5 || scale > 1.5 || component.x < 0 || component.y < 0 || component.x > 1100-componentTypes[component.type].width*scale || component.y > 750-componentTypes[component.type].height*scale-35) return false;
     ids.add(component.id);
@@ -97,6 +90,48 @@ function updateHistory() {
   $('#save-state').classList.toggle('saved',saved);
 }
 
+// LED colours: the red artwork is hue-shifted; the glow and label follow the colour.
+const LED_COLORS = {
+  red: { label: 'rojo', glow: '#F16C75', filter: '' },
+  yellow: { label: 'amarillo', glow: '#FFD54A', filter: 'hue-rotate(52deg) saturate(1.4) brightness(1.15)' },
+  green: { label: 'verde', glow: '#4CD07D', filter: 'hue-rotate(115deg) saturate(1.1)' },
+};
+const CANONICAL_TYPES = { uno:'arduino-uno', pi:'raspberry-pi-4', ultrasonic:'hc-sr04', flame:'flame-sensor', gas:'mq2-gas-sensor', infrared:'ir-line-sensor', lm35:'lm35', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard', motor:'dc-motor', buzzer:'buzzer', l298n:'motor-driver-l298n', battery:'battery-9v' };
+const canonicalIdOf = component => CANONICAL_TYPES[component.type] + ':' + /-([1-9]\d*)$/.exec(component.id)?.[1];
+function displayName(component) {
+  if (component.type === 'led' && component.color && component.color !== 'red') return 'LED ' + LED_COLORS[component.color].label;
+  return componentTypes[component.type].name;
+}
+
+// ---- Preloaded exercises (circuit-projects.js)
+const starterOf = id => ({ project: id, ...structuredClone(projects[id].circuit) });
+// Each exercise keeps its own saved block program per board.
+const programKeyOf = boardId => state.project ? `${state.project}.${boardId}` : boardId;
+function renderProjectInfo() {
+  const project = projects[state.project];
+  $('#project-title').textContent = project?.title ?? 'Proyecto personalizado';
+  $('#project-overview-title').textContent = project?.title ?? 'Proyecto personalizado';
+  $('#project-summary').textContent = project?.summary ?? 'Un circuito armado por ti.';
+  $('#project-challenge').textContent = project?.challenge ?? 'Elige un ejercicio en la parte superior para empezar con un circuito listo.';
+  $('#project-challenge').parentElement.hidden = !project;
+  $('#project-select').value = project ? state.project : '';
+}
+function loadProject(id, { reset = false } = {}) {
+  const starter = starterOf(id), before = snapshot();
+  if (before !== JSON.stringify(starter)) commit(before);
+  state = starter; selection = null; pending = null;
+  if (reset) {
+    try {
+      localStorage.removeItem(storageKey);
+      // A saved Blockly program for the exercise board would replace the preloaded one.
+      for (const component of state.components) localStorage.removeItem('robokan.blocks.workspace.v1.' + programKeyOf(component.id));
+    } catch {}
+    savedSnapshot = null;
+  }
+  render();
+  status(`${projects[id].title}: circuito listo. ${projects[id].challenge}`);
+}
+
 function point(endpoint) {
   const component = state.components.find(item => item.id === endpoint.component);
   const model = componentTypes[component.type];
@@ -106,6 +141,20 @@ function point(endpoint) {
 }
 
 function samePin(first, second) { return first.component === second.component && first.pin === second.pin; }
+
+// Nearest pin to a canvas point. Hit-testing by geometry (not by the topmost
+// SVG element) keeps wire ends usable where pins sit only 14 px apart.
+function pinNear(position, maxDistance = 9) {
+  let nearest = null, best = maxDistance;
+  for (const component of state.components) {
+    const scale = component.scale ?? 1;
+    for (const pin of componentTypes[component.type].pins) {
+      const distance = Math.hypot(component.x + pin.x * scale - position.x, component.y + pin.y * scale - position.y);
+      if (distance <= best) { best = distance; nearest = { component: component.id, pin: pin.name }; }
+    }
+  }
+  return nearest;
+}
 
 // Round the corners of a Manhattan route while keeping both terminals on the pins.
 function roundedPath(points, radius = 12) {
@@ -143,12 +192,14 @@ function cableBends(wire,index) {
 function renderComponents() {
   $('#components-layer').innerHTML=state.components.map(component => {
     const model=componentTypes[component.type];
-    const canonicalType = { uno:'arduino-uno', pi:'raspberry-pi-4', ultrasonic:'hc-sr04', flame:'flame-sensor', gas:'mq2-gas-sensor', infrared:'ir-line-sensor', lm35:'lm35', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard', motor:'dc-motor', buzzer:'buzzer', l298n:'motor-driver-l298n', battery:'battery-9v' }[component.type];
-    const canonicalId = canonicalType + ':' + /-([1-9]\d*)$/.exec(component.id)?.[1];
-    const electricalStatus = programComponentStates[canonicalId];
+    const canonicalId = canonicalIdOf(component);
+    // Program panel states win; otherwise the live "Iniciar simulación" result.
+    const electricalStatus = programComponentStates[canonicalId] ?? (simulationRunning ? simulationStates[canonicalId] : undefined);
     const ledOn = component.type === 'led' && electricalStatus === 'ok';
+    const ledColor = LED_COLORS[component.color] ?? LED_COLORS.red;
+    const burned = electricalStatus === 'burned';
     const scale=component.scale??1;
-    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y}) scale(${scale})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${['uno','pi'].includes(component.type) ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g>${ledOn ? `<ellipse class="program-led-glow" cx="45" cy="36" rx="28" ry="30" fill="#F16C75" opacity=".65" pointer-events="none"/>` : ''}${electricalStatus ? `<text class="component-program-status" x="0" y="${model.height+25}">${electricalStatus === 'ok' ? 'Activo' : electricalStatus === 'burned' ? 'Fallo eléctrico' : 'Sin alimentación'}</text>` : ''}<text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
+    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y}) scale(${scale})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${['uno','pi'].includes(component.type) ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)"${ledColor.filter ? ` style="filter:${ledColor.filter}"` : ''}>${model.art(component.id)}</g>${ledOn ? `<ellipse class="program-led-glow" cx="45" cy="36" rx="28" ry="30" fill="${ledColor.glow}" opacity=".65" pointer-events="none"/>` : ''}${burned ? burnEffect(component, model) : ''}${electricalStatus ? `<text class="component-program-status${burned ? ' is-burned' : ''}" x="0" y="${model.height+25}">${electricalStatus === 'ok' ? 'Activo' : burned ? '¡Quemado!' : 'Sin alimentación'}</text>` : ''}<text class="component-label" x="0" y="-18">${escapeText(displayName(component))}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
   }).join('');
   $('#pins-layer').innerHTML=state.components.map(component => componentTypes[component.type].pins.map(pin => {
     const endpoint={component:component.id,pin:pin.name};
@@ -161,6 +212,13 @@ function renderComponents() {
     const bends=cableBends(wire,index).map((p,bend)=>`<g class="wire-bend-handle" data-wire-bend="${bend}" data-wire-id="${wire.id}" role="button" tabindex="0" aria-label="Mover curva del cable"><circle cx="${p.x}" cy="${p.y}" r="14" fill="transparent" style="cursor:move"/><circle cx="${p.x}" cy="${p.y}" r="6" fill="white" stroke="#2878F0" stroke-width="2" pointer-events="none"/></g>`).join('');
     return ends+bends;
   }).join('');
+}
+
+// Burst and smoke drawn over a burned component; an LED also turns dark.
+function burnEffect(component, model) {
+  const cx = component.type === 'led' ? 45 : model.width - 14, cy = component.type === 'led' ? 34 : 14;
+  const star = Array.from({ length: 16 }, (_, i) => { const r = i % 2 ? 9 : 22, a = (Math.PI * i) / 8; return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`; }).join(' ');
+  return `<g class="burn-effect" pointer-events="none">${component.type === 'led' ? '<path d="M26 56V31a19 19 0 0 1 38 0v25z" fill="#2B2626" opacity=".88"/>' : ''}<polygon class="burn-burst" points="${star}" fill="#FFB84D" stroke="#E8433A" stroke-width="2"/><circle class="burn-smoke" cx="${cx - 6}" cy="${cy - 18}" r="7" fill="#7A7F87"/><circle class="burn-smoke burn-smoke-late" cx="${cx + 7}" cy="${cy - 24}" r="5" fill="#9AA0A8"/></g>`;
 }
 
 function renderWires() {
@@ -185,7 +243,8 @@ function renderInspector() {
 }
 
 function render() {
-  renderComponents(); renderWires(); renderInspector(); updateHistory();
+  refreshSimulation();
+  renderComponents(); renderWires(); renderInspector(); updateHistory(); renderProjectInfo();
   $('#component-count').textContent=`${state.components.length} componentes`;
   $('#wire-preview').setAttribute('d','');
 }
@@ -282,7 +341,8 @@ function openBoardProgram(component, withWorld = false) {
   const componentNumber = /-([1-9]\d*)$/.exec(component.id)?.[1];
   if (!componentNumber) { status('La placa tiene un identificador incompatible.'); return; }
   const boardSpec = component.type === 'pi' ? 'raspberry-pi-4' : 'arduino-uno';
-  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: boardSpec + ':' + componentNumber, programKey: component.id });
+  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: boardSpec + ':' + componentNumber, programKey: programKeyOf(component.id) });
+  if (Object.hasOwn(projects, state.project)) params.set('project', state.project);
   if (withWorld) params.set('world', '1');
   programReturnFocus = component.id;
   $('#program-board-name').textContent = componentTypes[component.type].name + ' · ' + component.id;
@@ -347,8 +407,12 @@ canvas.addEventListener('pointerdown',event=>{
     event.preventDefault();
     const wire=state.wires.find(item=>item.id===wireEnd.dataset.wireId);
     if (!wire) return;
+    // A wire-end handle is larger than the pin gap: if the pointer is really on a
+    // neighbouring pin, treat the press as a click on that pin.
+    const start=canvasPoint(event), near=pinNear(start);
+    if (near && !samePin(near,wire[wireEnd.dataset.wireEnd])) { choosePin(near); return; }
     pending=null; selection={kind:'wire',id:wire.id};
-    drag={kind:'wire-end',id:wire.id,end:wireEnd.dataset.wireEnd,pointer:event.pointerId,before:snapshot(),fixed:wire[wireEnd.dataset.wireEnd==='from'?'to':'from']};
+    drag={kind:'wire-end',id:wire.id,end:wireEnd.dataset.wireEnd,pointer:event.pointerId,before:snapshot(),fixed:wire[wireEnd.dataset.wireEnd==='from'?'to':'from'],startX:start.x,startY:start.y,moved:false};
     canvas.setPointerCapture(event.pointerId);
     render();
     const p=canvasPoint(event), a=point(drag.fixed);
@@ -393,6 +457,8 @@ canvas.addEventListener('pointermove',event=>{
     const wire=state.wires.find(item=>item.id===drag.id);
     if (wire?.bends?.[drag.index]) {wire.bends[drag.index]={x:Math.max(8,Math.min(1092,position.x)),y:Math.max(8,Math.min(742,position.y))};renderComponents();renderWires();}
   } else if (drag?.kind==='wire-end') {
+    if (!drag.moved && Math.hypot(position.x-drag.startX,position.y-drag.startY)<4) return;
+    drag.moved=true;
     const a=point(drag.fixed),wire=state.wires.find(item=>item.id===drag.id);
     $('#wire-preview').setAttribute('d',roundedPath([a,{x:a.x,y:a.y+a.direction*25},{x:position.x,y:a.y+a.direction*25},position]));
     $('#wire-preview').setAttribute('stroke',wire?.color||selectedColor);$('#wire-preview').setAttribute('stroke-width','3');
@@ -423,9 +489,12 @@ function finishDrag(event) {
   }
   if (drag.kind==='wire-end') {
     const current=drag, wire=state.wires.find(item=>item.id===current.id);
-    const target=event.type==='pointerup' ? document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-pin]') : null;
-    if (wire && target) {
-      const endpoint={component:target.dataset.owner,pin:target.dataset.pin};
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    drag=null;$('#wire-preview').setAttribute('d','');
+    // A click without dragging behaves like clicking the pin: start a new wire there.
+    if (wire && !current.moved && event.type==='pointerup') { choosePin(wire[current.end]); return; }
+    const endpoint=event.type==='pointerup' ? pinNear(canvasPoint(event),12) : null;
+    if (wire && endpoint) {
       const other=wire[current.end==='from'?'to':'from'];
       const duplicate=state.wires.some(item=>item.id!==wire.id&&((samePin(item.from,endpoint)&&samePin(item.to,other))||(samePin(item.to,endpoint)&&samePin(item.from,other))));
       if (!samePin(endpoint,other)&&!duplicate) {
@@ -433,8 +502,7 @@ function finishDrag(event) {
         status(`Cable reconectado a ${endpoint.pin}.`);
       } else status('No se puede conectar el cable a ese pin. Se conserva su conexión anterior.');
     } else status('No se soltó sobre un pin. Se conserva la conexión anterior.');
-    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
-    drag=null;$('#wire-preview').setAttribute('d','');render();return;
+    render();return;
   }
   if (drag.kind==='pan') { drag=null;$('#workspace').classList.remove('panning');if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);return; }
   if (drag.moved) lastBoardClick = null;
@@ -546,23 +614,21 @@ $('#dismiss-tip').addEventListener('click',()=>{$('#connection-tip').hidden=true
 $('#open-library').addEventListener('click',()=>{$('#library').classList.add('open');$('#component-search').focus();});
 $('#close-library').addEventListener('click',()=>{$('#library').classList.remove('open');$('#open-library').focus();});
 
-// Restores the "Evasor de obstáculos" starter (undoable) and forgets the saved project,
-// so a reload also opens the complete circuit and its preloaded program.
+// Restores the current exercise as it comes (undoable) and forgets the saved
+// project and its saved board program, so a reload shows the same thing.
 $('#reset-project').addEventListener('click',()=>{
-  if (!window.confirm('Se reemplazará el circuito actual por el evasor de obstáculos de inicio y se borrarán el proyecto y el programa guardados en este navegador. Puedes deshacerlo con Deshacer. ¿Continuar?')) return;
-  const before = snapshot();
-  if (before !== JSON.stringify(initial)) commit(before);
-  state = structuredClone(initial);
-  selection = null;
-  pending = null;
-  try {
-    localStorage.removeItem(storageKey);
-    // A saved Blockly program for the starter board would replace the preloaded avoider.
-    for (const component of initial.components) localStorage.removeItem('robokan.blocks.workspace.v1.' + component.id);
-  } catch {}
-  savedSnapshot = null;
-  render();
-  status('Evasor de obstáculos restablecido: circuito y programa listos para ejecutar.');
+  const id = Object.hasOwn(projects, state.project) ? state.project : DEFAULT_PROJECT;
+  if (!window.confirm(`Se reemplazará el circuito actual por el ejercicio "${projects[id].title}" tal como viene y se borrarán el proyecto y el programa guardados en este navegador. Puedes deshacerlo con Deshacer. ¿Continuar?`)) return;
+  loadProject(id, { reset: true });
+});
+
+$('#project-select').innerHTML = Object.entries(projects).map(([id, project]) => `<option value="${id}">${escapeText(project.title)}</option>`).join('');
+$('#project-select').addEventListener('change', event => {
+  const id = event.target.value;
+  if (!Object.hasOwn(projects, id) || id === state.project) return;
+  const pristine = Object.hasOwn(projects, state.project) && snapshot() === JSON.stringify(starterOf(state.project));
+  if (!pristine && !window.confirm(`Se cargará el ejercicio "${projects[id].title}" y se reemplazará el circuito actual. Puedes volver con Deshacer. ¿Continuar?`)) { renderProjectInfo(); return; }
+  loadProject(id);
 });
 
 $('#save-project').addEventListener('click',()=>{
@@ -570,28 +636,55 @@ $('#save-project').addEventListener('click',()=>{
   catch { status('No se pudo guardar: el almacenamiento del navegador no está disponible.'); }
 });
 
-function evaluateCircuit() {
+let simulationStates = {};
+// "El LED rojo", "el sensor ultrasónico": article plus name, keeping acronyms.
+const withArticle = (name, capital = true) => `${capital ? 'El' : 'el'} ${/^[A-ZÁÉÍÓÚ][a-záéíóú]/.test(name) ? name[0].toLowerCase() + name.slice(1) : name}`;
+const SIMULATION_MESSAGES = {
+  led_without_resistor: name => `¡${withArticle(name)} se quemó! No tiene resistencia en serie: pon una resistencia entre la placa y el LED.`,
+  reversed_polarity: name => `¡${withArticle(name)} se dañó! Tiene la alimentación invertida: revisa que + vaya a 5V y − a GND.`,
+  missing_common_ground: name => `${withArticle(name)} no responde: debe compartir GND con la placa.`,
+  overvoltage_gpio: name => `Un pin de ${withArticle(name, false)} recibe más voltaje del que soporta.`,
+  missing_power: name => `${withArticle(name)} no recibe energía: revisa sus conexiones de alimentación.`,
+};
+// Evaluates the circuit for "Iniciar simulación": per-component states for the
+// drawing and friendly messages for the status bar.
+function simulateCircuit() {
   try {
-    const graph=importCircuitWorkbench(snapshot());
-    const result=evaluate(graph,circuitSpecs);
-    const issues=result.violations
-      .filter(violation=>violation.ruleId!=='floating_pin')
-      .map(violation=>`${violation.instanceId}: ${violation.ruleId}`);
-    for(const [instanceId,status] of Object.entries(result.statusByInstance))
-      if(status==='unpowered'&&!issues.some(issue=>issue.startsWith(`${instanceId}:`))) issues.push(`${instanceId}: sin alimentación.`);
-    return issues;
+    const graph = importCircuitWorkbench(snapshot());
+    const result = evaluate(graph, circuitSpecs);
+    const nameOf = instanceId => { const component = state.components.find(item => canonicalIdOf(item) === instanceId); return component ? displayName(component) : instanceId; };
+    const messages = new Map();
+    for (const violation of result.violations) {
+      if (violation.ruleId === 'floating_pin' || messages.has(violation.instanceId)) continue;
+      const message = SIMULATION_MESSAGES[violation.ruleId];
+      if (message) messages.set(violation.instanceId, message(nameOf(violation.instanceId)));
+    }
+    for (const [instanceId, componentStatus] of Object.entries(result.statusByInstance)) {
+      if (componentStatus !== 'unpowered' || messages.has(instanceId)) continue;
+      messages.set(instanceId, instanceId.startsWith('led:')
+        ? `${withArticle(nameOf(instanceId))} está apagado: necesita energía de 5V o de un pin programado, pasando por una resistencia.`
+        : `${withArticle(nameOf(instanceId))} no recibe energía: revisa sus conexiones de alimentación y GND.`);
+    }
+    return { states: result.statusByInstance, messages: [...messages.values()] };
   } catch (error) {
-    return [`No se pudo evaluar el circuito: ${error instanceof Error ? error.message : String(error)}`];
+    return { states: {}, messages: [`No se pudo simular el circuito: ${error instanceof Error ? error.message : String(error)}`] };
   }
+}
+function refreshSimulation() {
+  if (!simulationRunning) { simulationStates = {}; simulationSummary = ''; return; }
+  const result = simulateCircuit();
+  simulationStates = result.states;
+  simulationSummary = result.messages.length ? `Simulación activa · ${result.messages.join(' ')}` : 'Simulación activa · ¡El circuito funciona! No hay fallos eléctricos.';
+  status('');
 }
 
 $('#run-circuit').addEventListener('click',()=>{
   simulationRunning=!simulationRunning;
   const button=$('#run-circuit');
-  if(!simulationRunning) {button.innerHTML=`${icon('check')}Iniciar simulación`;status('Simulación detenida.');return;}
+  if(!simulationRunning) {button.innerHTML=`${icon('check')}Iniciar simulación`;render();status('Simulación detenida.');return;}
   button.innerHTML=`${icon('close')}Detener simulación`;
-  const issues=evaluateCircuit();
-  status(issues.length?`Simulación activa · ${issues.join(' ')}`:'Simulación activa · No se detectan fallos eléctricos básicos en las conexiones actuales.');
+  // The simulation stays live: every edit re-evaluates it (see render).
+  render();
 });
 
 document.addEventListener('keydown',event=>{

@@ -6,7 +6,8 @@ const { JSDOM } = createRequire(import.meta.url)("jsdom");
 it("opens programming only for Arduino and waits for approved close", async () => {
   const html = readFileSync(new URL("../circuits.html", import.meta.url), "utf8");
   const art = readFileSync(new URL("../circuits-art.js", import.meta.url), "utf8").replaceAll("export const ", "const ").replaceAll("export function ", "function ");
-  const script = readFileSync(new URL("../circuits.js", import.meta.url), "utf8").replace(/^import .*;\r?\n/gm, "");
+  const projectsModule = readFileSync(new URL("../circuit-projects.js", import.meta.url), "utf8").replaceAll("export const ", "const ");
+  const script = projectsModule + "\n" + readFileSync(new URL("../circuits.js", import.meta.url), "utf8").replace(/^import .*;\r?\n/gm, "");
   const dom = new JSDOM(html, { url: "http://localhost/circuits.html", runScripts: "outside-only", pretendToBeVisual: true });
   const window = dom.window;
   window.structuredClone = structuredClone;
@@ -30,7 +31,7 @@ it("opens programming only for Arduino and waits for approved close", async () =
     expect(panel.open).toBe(true);
     const frame = window.document.querySelector("#program-frame");
     expect(frame.getAttribute("src")).toContain("embedded=1");
-    expect(frame.getAttribute("src")).toContain("programKey=uno-1");
+    expect(frame.getAttribute("src")).toContain("programKey=avoider.uno-1");
     expect(JSON.parse(window.sessionStorage.getItem("robokan.program.circuit-transfer")).components).toHaveLength(5);
     window.dispatchEvent(new window.MessageEvent("message", { origin: "http://localhost", source: frame.contentWindow, data: { type: "robokan:circuit-state", statusByInstance: { "hc-sr04:1": "ok" } } }));
     expect(canvas.querySelector('[data-component="sensor-1"]').textContent).toContain("Activo");

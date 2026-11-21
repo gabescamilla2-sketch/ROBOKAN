@@ -24,6 +24,7 @@ import {
   createWorldExample,
   presetProgramFor,
 } from "./world-example";
+import { programForProject } from "./exercise-programs";
 const WorldViewport = lazy(() =>
   import("../modules/world").then((module) => ({
     default: module.WorldViewport,
@@ -71,10 +72,13 @@ function BlocksPage() {
       ? createWorldExample().robot
       : createExample("avoider").robot;
   });
-  // The motors example and any circuit with both drive motors (such as the
-  // workbench "Evasor de obstáculos" starter) open with the avoider routine.
+  // The motors example opens with the avoider routine. The workbench passes
+  // ?project=<exercise> for its preloaded program; otherwise a circuit with
+  // both drive motors gets the avoider routine.
   const [presetProgram] = useState(() =>
-    isMotorExample ? createWorldExample().program : presetProgramFor(robot),
+    isMotorExample
+      ? createWorldExample().program
+      : (programForProject(params.get("project")) ?? presetProgramFor(robot)),
   );
   const [drives, setDrives] = useState<PinDrives>({});
   const circuitRef = useRef({ robot, drives });

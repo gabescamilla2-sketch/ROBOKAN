@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import { expect, it, vi } from "vitest";
+import { DEFAULT_PROJECT, projects } from "../circuit-projects.js";
 import { importCircuitWorkbench } from "../src/dev/import-circuit-workbench";
 import { circuitSpecs } from "../src/dev/circuit-fixtures";
 import {
@@ -14,16 +14,8 @@ import {
   evaluate,
 } from "../src/modules/circuit";
 
-/** Reads the starter project the static workbench opens with. */
-function workbenchInitialProject(): unknown {
-  const source = readFileSync(
-    new URL("../circuits.js", import.meta.url),
-    "utf8",
-  );
-  const literal = /const initial = (\{[\s\S]*?\n\});/.exec(source)?.[1];
-  if (!literal) throw new Error("initial project not found in circuits.js");
-  return new Function(`return ${literal};`)();
-}
+/** The starter project the static workbench opens with. */
+const workbenchInitialProject = () => projects[DEFAULT_PROJECT].circuit;
 
 it("opens the workbench with a powered obstacle-avoider robot", () => {
   const robot = importCircuitWorkbench(

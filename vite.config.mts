@@ -17,7 +17,7 @@ export default defineConfig({
       name: "preserve-existing-static-assets",
       closeBundle() {
         // The existing home loads its static modules by URL at runtime.
-        for (const file of ["index.html", "app.js", "circuits.html", "circuits.js", "circuits.css", "circuits-art.js"]) {
+        for (const file of ["index.html", "app.js", "circuits.html", "circuits.js", "circuits.css", "circuits-art.js", "circuit-projects.js"]) {
           cpSync(
             resolve(import.meta.dirname, file),
             resolve(import.meta.dirname, "dist", file),

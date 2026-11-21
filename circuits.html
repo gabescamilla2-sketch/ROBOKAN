@@ -55,8 +55,8 @@
     <header class="project-header">
       <a class="wordmark" href="index.html" aria-label="ROBOKAN, inicio"><img src="assets/home/brand-logo.png" width="152" height="40" alt="ROBOKAN"></a>
       <span class="header-divider"></span>
-      <div class="project-name"><span>Mi laboratorio <svg><use href="#i-chevron"/></svg> Circuitos</span><h1>Evasor de obstáculos <span class="project-badge">Proyecto de inicio</span></h1></div>
-      <div class="header-actions"><span class="save-state" id="save-state">Cambios sin guardar</span><button class="button secondary" id="reset-project" type="button" title="Vuelve al evasor de obstáculos de inicio: circuito completo y programa listos"><svg><use href="#i-undo"/></svg><span>Restablecer evasor</span></button><button class="button secondary" id="save-project" type="button"><svg><use href="#i-save"/></svg><span>Guardar proyecto</span></button></div>
+      <div class="project-name"><span>Mi laboratorio <svg><use href="#i-chevron"/></svg> Circuitos</span><h1><span id="project-title">Evasor de obstáculos</span> <span class="project-badge">Ejercicio</span></h1></div>
+      <div class="header-actions"><span class="save-state" id="save-state">Cambios sin guardar</span><label class="project-picker"><span>Ejercicio</span><select id="project-select" aria-label="Elegir un ejercicio precargado"></select></label><button class="button secondary" id="reset-project" type="button" title="Vuelve al ejercicio tal como viene: circuito completo y programa listos"><svg><use href="#i-undo"/></svg><span>Restablecer</span></button><button class="button secondary" id="save-project" type="button"><svg><use href="#i-save"/></svg><span>Guardar proyecto</span></button></div>
     </header>
     <div class="workspace-toolbar">
       <div class="workspace-tab"><svg><use href="#i-circuit"/></svg>Circuito <span>01</span></div>
@@ -97,7 +97,7 @@
       </main>
       <aside class="inspector" aria-label="Detalles del circuito">
         <div class="panel-heading"><h2>Tu circuito</h2><svg><use href="#i-layers"/></svg></div>
-        <div class="project-overview"><div class="overview-icon"><svg><use href="#i-circuit"/></svg></div><strong>Evasor de obstáculos</strong><p>Un sensor para descubrir lo que hay enfrente.</p><span class="level-label">Electrónica · Nivel inicial</span></div>
+        <div class="project-overview"><div class="overview-icon"><svg><use href="#i-circuit"/></svg></div><strong id="project-overview-title">Evasor de obstáculos</strong><p id="project-summary">Un sensor ultrasónico y dos motores: el robot avanza y esquiva lo que tiene enfrente.</p><p class="project-challenge"><b>Reto:</b> <span id="project-challenge"></span></p><span class="level-label">Electrónica · Nivel inicial</span></div>
         <section class="inspector-section"><div class="section-heading"><h3 id="selection-heading">Conexiones</h3><span id="wire-count" class="count">4</span></div><div id="selection-details"></div><div class="connection-list" id="connection-list"></div></section>
         <section class="inspector-section"><h3>Color del cable</h3><div class="wire-colors" id="wire-colors" role="group" aria-label="Color del cable"></div><p class="field-hint">Selecciona un cable para cambiar su color.</p></section>
         <div class="learning-note"><span class="note-heading"><svg><use href="#i-info"/></svg>Antes de conectar</span><p>Los colores ayudan a seguir cada conexión. Usa coral para la alimentación y azul noche para tierra.</p><button class="text-button" type="button" data-help>Ver guía de conexiones<svg><use href="#i-chevron"/></svg></button></div>

@@ -27,7 +27,9 @@ En la mesa de trabajo se colocan placas, sensores y motores y se unen con cables
 
 ![Mesa de trabajo de circuitos con el evasor de obstáculos](docs/img/circuitos.png)
 
-La simulación eléctrica es educativa: si un LED se conecta sin resistencia se quema, si se invierte la alimentación el componente se daña y si falta una tierra común el sensor no responde. Cada error se explica para que el estudiante lo corrija.
+Además del evasor, el selector **Ejercicio** trae circuitos básicos listos, cada uno con su reto: **Encender un LED**, **LED parpadeante**, **Semáforo** y **Medir distancia**. Los que usan la placa abren su programa ya preparado al programarla.
+
+Al pulsar **Iniciar simulación** el circuito cobra vida sobre la mesa: el LED se enciende si está bien conectado y, si se conecta sin resistencia, se quema con una pequeña explosión. Si se invierte la alimentación el componente se daña y si falta una tierra común el sensor no responde. Cada error se explica en español para que el estudiante lo corrija.
 
 ### 2. Programa con bloques
 
