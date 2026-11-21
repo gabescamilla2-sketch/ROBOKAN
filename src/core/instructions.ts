@@ -1,3 +1,5 @@
+import type { RuleViolation } from "./contract";
+
 export type Instruction =
   | { op: "wait"; delayMs: number }
   | { op: "motor_write"; instanceId: string; speedPct: number }
@@ -14,3 +16,13 @@ export type Instruction =
       isOn: boolean;
       frequencyHz: number;
     };
+
+export type HardwareInstruction = Exclude<Instruction, { op: "wait" }>;
+export type InstructionResult =
+  | { kind: "completed" }
+  | { kind: "reading"; resultId: string; reading: number }
+  | { kind: "electrical_error"; violations: RuleViolation[] };
+export type ExecuteHardwareInstruction = (
+  instruction: HardwareInstruction,
+  signal: AbortSignal,
+) => Promise<InstructionResult>;

@@ -13,7 +13,9 @@ El tipo compartido `Instruction` vive en `src/core/instructions.ts` y se exporta
 
 Rol 2 genera C++ visible y ejecuta instrucciones estructuradas desde TypeScript. Rol 4 resuelve conexiones y valida el estado eléctrico antes de lecturas y comandos. Rol 3 implementa las consultas y comandos del mundo.
 
-La interfaz de resultados de lectura y errores eléctricos sigue pendiente de acuerdo e implementación entre los tres roles. El runtime actual ejecuta esperas.
+El contrato confirmado vive en `src/core/instructions.ts`: `HardwareInstruction` excluye `wait`; `ExecuteHardwareInstruction(instruction, signal)` devuelve una promesa de `InstructionResult`. Los resultados usan `kind` con `completed`, `reading` (resultId y reading) o `electrical_error` (RuleViolation[]). Las lecturas de distancia son centímetros. Las operaciones canceladas rechazan con `AbortError` y comprueban la señal antes de cualquier efecto.
+
+`ProgramRunner` recibe el adaptador en su constructor, ejecuta las cinco instrucciones, conserva lecturas por resultId y expone violaciones y errores. El adaptador real entre circuito y mundo queda pendiente de integración. El contrato incluye `missing_power`; Rol 4 implementa su emisión.
 
 ## 4. Consultas al mundo
 `world.query.ultrasonicDistanceCm(instanceId)`, `flameIntensityNorm(instanceId)`, `gasLevelNorm(instanceId)` y `groundReflectanceNorm(instanceId)`. Las tres últimas lecturas están normalizadas entre 0 y 1.

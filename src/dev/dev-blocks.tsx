@@ -46,6 +46,8 @@ function BlocksPage() {
       </div>
       {issues.length > 0 && <ul className="notice error-notice" role="alert">{issues.map((issue) => <li key={issue}>{labels.validation[issue as keyof typeof labels.validation]}</li>)}</ul>}
       {hasHardware && <p className="notice">{labels.hardwarePending}</p>}
+      {runner.violations.length > 0 && <ul className="notice error-notice" role="alert">{runner.violations.map((violation, index) => <li key={index}>{spanish.errors[violation.ruleId]} ({violation.instanceId})</li>)}</ul>}
+      {runner.error && <p className="notice error-notice" role="alert">{runner.error}</p>}
       <div className="editor-layout">
         <section className="workspace-panel" aria-label={labels.workspace}><div className="panel-heading"><h2>{labels.workspace}</h2><span>{labels.connectHint}</span></div><BlocksEditor isReadOnly={isActive} onChange={setBlocks} activeInstructionIndex={isActive ? runner.instructionIndex : undefined} /></section>
         <aside className="code-panel">

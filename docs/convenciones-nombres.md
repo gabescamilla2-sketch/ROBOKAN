@@ -108,7 +108,9 @@ Una sola definición en `src/core/`, importada por los tres roles. Nadie redecla
 | `ActuatorKind` | `motor`, `servo`, `led`, `buzzer` |
 | `ComponentCategory` | `board`, `sensor`, `actuator`, `passive`, `power_source`, `breadboard` |
 | `SignalKind` | `floating`, `digital`, `analog`, `pwm` |
-| `RuleId` | `led_without_resistor`, `reversed_polarity`, `missing_common_ground`, `overvoltage_gpio`, `floating_pin` |
+| `RuleId` | `led_without_resistor`, `reversed_polarity`, `missing_common_ground`, `missing_power`, `overvoltage_gpio`, `floating_pin` |
+
+`missing_power` indica que un componente requiere alimentación positiva y su pin de suministro carece de una red con fuente disponible. `missing_common_ground` indica intercambio de señales entre componente y placa sin GND común. Si la polaridad está invertida se emite `reversed_polarity`. Rol 4 implementa la emisión de estas violaciones.
 
 `SensorKind` es la **misma lista** en `components` (Rol 5), `circuit` (Rol 4) y `world` (Rol 3). Si se agrega un sensor, se agrega ahí primero.
 

@@ -216,3 +216,25 @@ Referencias del proyecto: [Arquitectura](arquitectura.md), [Contrato entre módu
 - Pendiente verificar visualmente resaltado, zoom, diálogos, descarga e importación en un navegador real.
 - Próximo trabajo funcional: acordar el contrato de resultados y errores con Roles 3 y 4, ejecutar instrucciones de hardware y aplicar las acciones de pausa, reanudación y detención sobre actuadores.
 - Revisar y guardar estos cambios en el siguiente commit.
+
+## Integración del contrato confirmado de hardware
+
+Roles 3 y 4 confirmaron `HardwareInstruction`, `InstructionResult` y `ExecuteHardwareInstruction` con `AbortSignal`. Las cancelaciones rechazan con `AbortError`. Los tipos están implementados y exportados desde core.
+
+```ts
+const runner = new ProgramRunner(executeHardwareInstruction);
+runner.run(instructions, { repeat: true });
+// runner.readings, runner.violations, runner.error y runner.status
+```
+
+- El runtime admite las cinco instrucciones. Los programas de hardware requieren proporcionar el adaptador.
+- Lecturas válidas y finitas se guardan por `resultId`; los errores eléctricos se exponen a la interfaz y detienen la ejecución con estado `error`.
+- Pausar aborta la operación pendiente, conserva cursor y tiempo restante y pone los motores registrados en cero. Reanudar vuelve a enviar sus últimas órdenes mediante el adaptador para validación y continúa. Una instrucción de hardware interrumpida se reintenta.
+- Detener aborta la operación, cancela temporizadores, reinicia cursor y solicita velocidad cero, LED apagado y buzzer apagado. Las acciones de apagado se encadenan antes de iniciar otra ejecución o restaurar motores.
+- Un resultado tardío de una ejecución cancelada se descarta. El adaptador tiene la responsabilidad de comprobar la cancelación antes de aplicar efectos al mundo.
+- Las órdenes de apagado pasan por el adaptador. Los rechazos eléctricos o fallos de apagado quedan disponibles como diagnóstico.
+- Se agregó `missing_power` a `RuleId`, traducciones y convenciones. Rol 4 todavía debe implementar su detección.
+- La página muestra errores del runtime y conserva el aviso de hardware pendiente hasta conectar el adaptador real. La escena de Rol 3 y el circuito de Rol 4 requieren integración de punta a punta.
+- `tests/runtime-hardware.test.ts` verifica lecturas, secuencias de hardware, pausa/reanudación de motores, apagado, cancelación y resultados tardíos. Pasaron 70 pruebas en total (5 de menú y 65 de Vitest).
+
+Los apartados anteriores documentan etapas previas. Este contrato confirmado sustituye la propuesta de resultados y la limitación inicial del runtime a Esperar.

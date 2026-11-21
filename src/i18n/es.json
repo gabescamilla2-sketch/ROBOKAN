@@ -60,7 +60,7 @@
     "waitMessage": "Esperar %1 segundos",
     "cpp": "C++ equivalente",
     "program": "Instrucciones del simulador",
-    "status": { "idle": "Listo", "running": "En ejecución", "paused": "Pausado", "completed": "Completado" }
+    "status": { "idle": "Listo", "running": "En ejecución", "paused": "Pausado", "completed": "Completado", "error": "Error de ejecución" }
   },
   "circuit": {
     "title": "Laboratorio de circuitos",
@@ -133,6 +133,7 @@
     "connected": "Conexión creada."
   },
   "errors": {
+    "missing_power": "Esta pieza necesita alimentación positiva. Conecta su suministro a una fuente disponible.",
     "led_without_resistor": "El LED está conectado sin una resistencia en serie. Añade una resistencia para protegerlo.",
     "reversed_polarity": "La alimentación está invertida. Revisa los pines positivos y de tierra.",
     "missing_common_ground": "Esta pieza necesita compartir GND con cada placa conectada a sus señales.",

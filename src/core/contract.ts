@@ -17,6 +17,7 @@ export const RULE_IDS = {
   ledWithoutResistor: "led_without_resistor",
   reversedPolarity: "reversed_polarity",
   missingCommonGround: "missing_common_ground",
+  missingPower: "missing_power",
   overvoltageGpio: "overvoltage_gpio",
   floatingPin: "floating_pin",
 } as const;
