@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 const { JSDOM } = createRequire(import.meta.url)("jsdom");
 
 it("opens programming only for Arduino and waits for approved close", async () => {
@@ -40,8 +40,8 @@ it("opens programming only for Arduino and waits for approved close", async () =
     window.dispatchEvent(new window.MessageEvent("message", { origin: "http://malicious.invalid", source: frame.contentWindow, data: { type: "robokan:close-allowed" } }));
     expect(panel.open).toBe(true);
     window.dispatchEvent(new window.MessageEvent("message", { origin: "http://localhost", source: frame.contentWindow, data: { type: "robokan:close-allowed" } }));
-    await new Promise(resolve => window.setTimeout(resolve, 10));
-    expect(panel.open).toBe(false);
+    // The panel closes on a timer; wait for it instead of a fixed delay (flaky under load).
+    await vi.waitFor(() => expect(panel.open).toBe(false), { timeout: 2000 });
     expect(frame.hasAttribute("src")).toBe(false);
   } finally { window.close(); }
 });

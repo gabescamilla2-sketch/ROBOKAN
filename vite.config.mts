@@ -9,6 +9,9 @@ export default defineConfig({
       input: {
         circuit: resolve(import.meta.dirname, "circuit.html"),
         blocks: resolve(import.meta.dirname, "blocks.html"),
+        // The workbench imports TypeScript modules, so it must be bundled:
+        // copied as-is, GitHub Pages serves .ts as video/mp2t and nothing runs.
+        circuits: resolve(import.meta.dirname, "circuits.html"),
       },
     },
   },
@@ -16,8 +19,8 @@ export default defineConfig({
     {
       name: "preserve-existing-static-assets",
       closeBundle() {
-        // The existing home loads its static modules by URL at runtime.
-        for (const file of ["index.html", "app.js", "circuits.html", "circuits.js", "circuits.css", "circuits-art.js", "circuit-projects.js"]) {
+        // The home page loads its static modules by URL at runtime.
+        for (const file of ["index.html", "app.js"]) {
           cpSync(
             resolve(import.meta.dirname, file),
             resolve(import.meta.dirname, "dist", file),
