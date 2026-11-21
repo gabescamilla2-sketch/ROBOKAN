@@ -1,39 +1,43 @@
-# Circuit rule checks
+# Circuit editor and runtime boundary
 
-Run the educational electrical rules independently of the static website:
+The existing home page remains the entry point. Choose a project, then **Abrir circuito**. The editor is a separate `circuit.html` page; programming, missions and the 3D world are not implemented here.
+
+## Run locally
 
 ```sh
 npm ci --ignore-scripts
 npm run test:circuit
 npm run typecheck:circuit
+npm run build
+npm run dev
 ```
 
-`npm test` runs all `tests/circuit-*.test.ts` files. Other modules are intentionally excluded until their own runners and contracts are defined. Development dependencies are locked; no production dependency or website bundler is added. Node must match the `engines` range in the root package manifest. Vitest setup reference: https://vitest.dev/guide/ .
+Vite serves the home page and circuit page at the printed local URL. Production output is `dist/`. Serve that directory over HTTP; do not open the TSX source as a file URL. Existing static assets are copied into the multipage build unchanged. The classic background-script and dynamic-URL build warnings originate from the existing home assets and require browser verification, not a false clean-build claim.
 
-## Public boundary
+## Public API
 
-Import from this module's `index.ts`. Existing `buildNetlist`, `createPinRef`, `parsePinRef`, `evaluateCircuitRules` and result types remain available. `evaluateCircuitRules(graph, specs)` is a pure snapshot evaluation: it does not mutate the graph or retain burned state between calls.
+Import through `src/modules/circuit/index.ts`; shared types, events and ID allocation come from `src/core/index.ts`.
 
-`CircuitRuleSpec` is still a temporary structural adapter, not a replacement for the future shared `core` contract. Supply a component's nominal operating `supplyVoltageV`; `maxVoltageV` is a limit, not an emitted signal. Named board rails such as `5V`, `3V3` and `5V_1` carry their labeled nominal voltages. `VIN` is an input, not a board voltage source.
+- `CircuitEditor({ graph, specs, onChange, drives?, onDriveChange?, ghostWires?, events?, onLoad? })` is controlled. The caller owns the one `RobotDefinition`; merge circuit changes into it without replacing the program or chassis. `onLoad` lets the owner clear runtime drives when replacing a circuit.
+- `evaluate(graph, specs, drives)` returns `CircuitState`, including every pin's signal. Omitted drives are floating. Digital LOW, HIGH, analog values and PWM remain distinct. A drive must target a declared output/bidirectional pin; invalid signal values are rejected.
+- `createCircuitApi({ getGraph, getSpecs, getBoardInstanceId, getDrives })` binds that context without copying robot state. Its `evaluate()` and `resolvePin("D9")` are the runtime-facing methods. `connections("D9")` lists connected PinRefs for the hardware bridge.
+- `publishCircuitChanges(previous, next, events)` emits typed circuit/pin/burn transitions. The bus is scoped to its caller and returns unsubscribe functions.
+- Legacy `buildNetlist`, `createPinRef`, `parsePinRef` and `evaluateCircuitRules` exports remain. The latter retains its static potential-HIGH defaults unless a signal override map is explicitly supplied. Use `evaluate`, not the legacy static rule adapter, for runtime values.
 
-## Simplified electrical model
+The development page accepts a production catalog through the same `ComponentSpec[]` boundary. Its own fixtures in `src/dev/circuit-fixtures.ts` are schematic demonstration data, not a replacement for the Role 5 catalog, assets or physically validated component ratings. Supplied `svgPath` assets are rendered without injecting SVG markup; an empty path uses a schematic fallback.
 
-- Boards and batteries are assumed available as power sources. Explicit board `digital_out`/`pwm_out` pins represent potential HIGH at the board's operating supply. They do not simulate a running program, LOW, or PWM timing. `digital_io` is treated as an input until runtime direction is implemented.
-- Sensors and actuators with supply pins require a positive supply path and ground. Missing common ground is checked for both signal inputs and outputs against every signal-connected board, not an unrelated board. Unpowered or reversed components do not drive signal outputs.
-- Direct powered output potentials are used for GPIO overvoltage checks, including supplies and sensor outputs. A component's maximum rating never supplies a voltage.
-- A direct forward voltage difference across an LED without a series resistance is unsafe. Parallel or bypassed resistors do not protect it. Series resistor paths on either side are recognized; resistor values, current and voltage drops are not calculated.
-- The temporary adapter also recognizes legacy `analog_out` specs as driven outputs, preserving their distinction from input-only nets. This does not add a shared `PinType` or simulate an analog reading.
-- Resistor-path traversal stops at a fixed source or ground reference. It cannot cross ground and discover a positive supply through an unrelated load.
-- Inputs need a driving source or a ground/pull-resistor reference. Connecting inputs only to each other does not supply a signal.
+## Editor behavior
 
-This is not a voltage solver. General voltage propagation, resistor dividers, competing-source/short-circuit behavior, analog sensor readings and actual GPIO direction/value require the next runtime signal layer. These checks must not be presented as a complete electrical simulation.
+Drag or tap palette pieces; drag components to move on a 20-unit grid. Click two pins or use the source/destination selects to connect them. Select wires to delete them. Keyboard: arrows move the selected component, R rotates it, Delete removes it, Escape cancels a pending wire. Zoom controls/wheel and background panning operate on the SVG viewport. Pin tooltips and inspector rows show names and volts. Optional ghost wires mark missing expected connections.
 
-## Remaining Role 4 work
+**Guardar en este equipo** stores the circuit locally; **Recuperar guardado** replaces it only after validation. JSON download/import uses a version1 envelope. Loading validates collection limits, catalog membership, unique IDs, finite positions, quarter-turn rotations, known pin refs, wire colors and ID allocation watermarks. It never imports Python/program text or executes file content. Browser storage can fail; export remains a separate fallback.
 
-The editor, breadboard internal connections, runtime `CircuitState.signalByPin`, public `evaluate`/`resolvePin`, help wires, serialization, event integration and working dev page are not implemented by this foundation. Shared types/events and component specs/assets require coordination with roles 3 and 5; none of their modules is changed here.
+## Electrical limits
 
-## Runtime state and topology
+Boards/batteries supply nominal rails. Breadboard columns join a-e and f-j separately; numbered columns, positive/negative and top/bottom rails remain isolated. Each declared rail is continuous; physically split rails need a future connectivity profile. Resistor paths stop at fixed references; conflicting drivers are floating and reported. There is no SPICE/current solver, resistor-divider calculation, motor physics or synthetic world sensing. Sensor values must be supplied by the world/runtime through valid pin drives; unpowered/burned outputs do not propagate.
 
-Use `evaluate(graph, specs, drives)` for actual signals, or bind `createCircuitApi({ getGraph, getSpecs, getBoardInstanceId, getDrives })` and call its single-argument `resolvePin("D9")`. The graph and catalog remain caller-owned. `connections("D9")` lists other pin references on the same net, for the external hardware bridge. Drivers use full PinRefs; omitted drivers are floating, not an assumed HIGH. `publishCircuitChanges` emits typed state/pin/burn transitions to a caller-provided scoped bus.
+Burned state is recomputed per snapshot; persistent damage/reset semantics belong to the simulation owner. The typed bridge and controlled editor are ready for other roles, but no Skulpt, mission engine, production component registry or world implementation is claimed.
 
-Breadboard columns join a-e and f-j separately; numbered columns and positive/negative/top/bottom rails remain isolated. Each declared rail is continuous. A physically split-rail board needs an explicit future connectivity profile. Signal propagation crosses resistors only to find source references, stops at fixed nodes and reports conflicting drivers as floating; it is not a SPICE/current/voltage-divider solver.
+## Verification status
+
+See `odd/tasks/circuit-editor-integration.md` for observed checks and exact limitations. A previous foundation review is still escalated; passing tests is not a review approval or publishing permission. No site was deployed.
