@@ -2,7 +2,35 @@ import { useEffect, useRef, useState } from "react";
 import type { RobotDefinition } from "../../core";
 import type { RobotWorld, WorldSnapshot } from "./types";
 import { createRobotWorld } from "./create-world";
+import {
+  DEFAULT_ROBOT_START,
+  MAX_OBSTACLES,
+  OBSTACLE_KINDS,
+  ULTRASONIC_RANGE_CM,
+  WORLD_MAP_STORAGE_KEY,
+  addObstacle,
+  clearObstacles,
+  parseWorldMap,
+  removeObstacle,
+  serializeWorldMap,
+  setRobotStart,
+  updateObstacle,
+  type ObstacleKind,
+  type WorldMap,
+} from "./map";
+import { SHAPE_DRAG_TYPE, WorldDesigner } from "./WorldDesigner";
 import { world as labels } from "../../i18n/es.json";
+
+function loadStoredMap(): WorldMap {
+  try {
+    return parseWorldMap(localStorage.getItem(WORLD_MAP_STORAGE_KEY));
+  } catch {
+    return parseWorldMap(null);
+  }
+}
+
+/** Distance in front of the robot where new obstacles appear. */
+const SPAWN_AHEAD_M = 2.5;
 
 export function WorldViewport({
   robot,
@@ -24,9 +52,17 @@ export function WorldViewport({
   );
   const [showRay, setShowRay] = useState(true);
   const [showTrace, setShowTrace] = useState(true);
+  // The arena layout survives reloads; the world mirrors it and reports edits back.
+  const [worldMap, setWorldMap] = useState<WorldMap>(loadStoredMap);
+  const mapRef = useRef(worldMap);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isDesigning, setIsDesigning] = useState(false);
+  const designingRef = useRef(isDesigning);
+  designingRef.current = isDesigning;
   useEffect(() => {
     const controller = new AbortController();
     let poll: ReturnType<typeof setInterval> | undefined;
+    let unsubscribeMap: (() => void) | undefined;
     setIsLoading(true);
     setError("");
     void createRobotWorld(canvasRef.current!, robot, controller.signal)
@@ -35,6 +71,18 @@ export function WorldViewport({
           world.dispose();
           return;
         }
+        unsubscribeMap = world.onMapChange((map, selected) => {
+          mapRef.current = map;
+          setWorldMap(map);
+          setSelectedId(selected);
+          try {
+            localStorage.setItem(WORLD_MAP_STORAGE_KEY, serializeWorldMap(map));
+          } catch {
+            // Storage can be unavailable; the map still works for this visit.
+          }
+        });
+        world.setMap(mapRef.current);
+        world.setEditMode(designingRef.current);
         readyRef.current(world);
         worldRef.current = world;
         world.setCameraView(cameraView);
@@ -51,12 +99,34 @@ export function WorldViewport({
       });
     return () => {
       clearInterval(poll);
+      unsubscribeMap?.();
       worldRef.current = null;
       setSnapshot(null);
       controller.abort();
       readyRef.current(null);
     };
   }, [robot, generation]);
+  const applyMap = (next: WorldMap) => worldRef.current?.setMap(next);
+  const placeShape = (kind: ObstacleKind, at: { x: number; z: number }) => {
+    const world = worldRef.current;
+    if (!world || worldMap.obstacles.length >= MAX_OBSTACLES) return;
+    const added = addObstacle(worldMap, kind, at);
+    world.setMap(added.map);
+    world.selectObstacle(added.id);
+  };
+  const addAheadOfRobot = (kind: ObstacleKind) => {
+    const world = worldRef.current;
+    if (!world) return;
+    const pose = world.getSnapshot();
+    const headingRad = (pose.headingDeg * Math.PI) / 180;
+    placeShape(kind, {
+      x: pose.xM + Math.sin(headingRad) * SPAWN_AHEAD_M,
+      z: pose.zM + Math.cos(headingRad) * SPAWN_AHEAD_M,
+    });
+  };
+  const draggedShape = (types: readonly string[]) =>
+    isDesigning && types.includes(SHAPE_DRAG_TYPE);
+  const worldUnavailable = isLoading || Boolean(error);
   return (
     <section className="world-viewport" aria-label={labels.title}>
       <div
@@ -101,6 +171,38 @@ export function WorldViewport({
           />
           {labels.trajectory}
         </label>
+        <label className="world-range" title={labels.rangeHint}>
+          {labels.range}
+          <input
+            type="range"
+            min={ULTRASONIC_RANGE_CM.min}
+            max={ULTRASONIC_RANGE_CM.max}
+            step={10}
+            value={worldMap.ultrasonicRangeCm}
+            disabled={worldUnavailable}
+            onChange={(event) =>
+              applyMap({
+                ...worldMap,
+                ultrasonicRangeCm: Number(event.target.value),
+              })
+            }
+          />
+          <output>{worldMap.ultrasonicRangeCm} cm</output>
+        </label>
+        <button
+          type="button"
+          className="world-design-toggle"
+          aria-pressed={isDesigning}
+          disabled={worldUnavailable}
+          onClick={() => {
+            const next = !isDesigning;
+            setIsDesigning(next);
+            worldRef.current?.setEditMode(next);
+            if (!next) worldRef.current?.selectObstacle(null);
+          }}
+        >
+          {isDesigning ? labels.designing : labels.design}
+        </button>
       </div>
       {isLoading && <p role="status">{labels.loading}</p>}
       {error && (
@@ -113,7 +215,56 @@ export function WorldViewport({
           </button>
         </div>
       )}
-      <canvas ref={canvasRef} tabIndex={0} aria-label={labels.canvas} />
+      <canvas
+        ref={canvasRef}
+        tabIndex={0}
+        aria-label={labels.canvas}
+        className={isDesigning ? "is-designing" : undefined}
+        onDragOver={(event) => {
+          if (!draggedShape(event.dataTransfer.types)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        }}
+        onDrop={(event) => {
+          const kind = event.dataTransfer.getData(SHAPE_DRAG_TYPE);
+          if (
+            !isDesigning ||
+            !(OBSTACLE_KINDS as readonly string[]).includes(kind)
+          )
+            return;
+          event.preventDefault();
+          const point = worldRef.current?.floorPointAt(
+            event.clientX,
+            event.clientY,
+          );
+          if (point) placeShape(kind as ObstacleKind, point);
+        }}
+      />
+      {isDesigning && !worldUnavailable && (
+        <WorldDesigner
+          map={worldMap}
+          sensorHeightCm={snapshot?.sensorHeightCm ?? null}
+          selectedId={selectedId}
+          onAddShape={addAheadOfRobot}
+          onUpdateObstacle={(id, patch) =>
+            applyMap(updateObstacle(worldMap, id, patch))
+          }
+          onRemoveObstacle={(id) => applyMap(removeObstacle(worldMap, id))}
+          onClear={() => {
+            if (window.confirm(labels.confirmClear))
+              applyMap(clearObstacles(worldMap));
+          }}
+          onToggleScenery={(visible) =>
+            applyMap({ ...worldMap, showSceneryObstacles: visible })
+          }
+          onRobotHeading={(headingDeg) =>
+            applyMap(setRobotStart(worldMap, { headingDeg }))
+          }
+          onRobotDefault={() =>
+            applyMap(setRobotStart(worldMap, DEFAULT_ROBOT_START))
+          }
+        />
+      )}
       {snapshot && (
         <>
           <dl className="world-telemetry">

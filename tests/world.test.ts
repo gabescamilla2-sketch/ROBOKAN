@@ -133,3 +133,28 @@ it("rejects unpowered motors, permits their stop and respects cancellation", asy
     ),
   ).rejects.toHaveProperty("name", "AbortError");
 });
+
+it("lets a small robot drive up to the arena walls instead of stopping at a fixed 8 m line", () => {
+  let pose = { x: 0, z: 0, headingRad: 0 };
+  for (let step = 0; step < 100; step++)
+    pose = advanceRobot(pose, 100, 100, 0.25, [], 0.4);
+  // Arena walls stand at ±8.8 m: the robot body (0.4 m radius) stops at the wall.
+  expect(pose.z).toBeGreaterThan(8.3);
+  expect(pose.z).toBeLessThanOrEqual(8.4);
+});
+
+it("slides along an obstacle it touches at an angle instead of freezing", () => {
+  const wall = { minX: -5, maxX: 5, minZ: 2, maxZ: 2.5 };
+  // Heading 45°: moving +x and +z toward the wall.
+  let pose = { x: 0, z: 0, headingRad: Math.PI / 4 };
+  for (let step = 0; step < 40; step++)
+    pose = advanceRobot(pose, 60, 60, 0.1, [wall], 0.4);
+  expect(pose.z).toBeLessThanOrEqual(2 - 0.4 + 1e-9);
+  expect(pose.x).toBeGreaterThan(2.5);
+  // Head-on contact still stops the robot completely.
+  let headOn = { x: 0, z: 0, headingRad: 0 };
+  for (let step = 0; step < 40; step++)
+    headOn = advanceRobot(headOn, 60, 60, 0.1, [wall], 0.4);
+  const stopped = advanceRobot(headOn, 60, 60, 0.1, [wall], 0.4);
+  expect(stopped).toEqual(headOn);
+});

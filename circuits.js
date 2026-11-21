@@ -11,12 +11,17 @@ const colors = [
   { name:'Azul',value:'#2878F0' }, { name:'Amarillo',value:'#FFB84D' }
 ];
 const initial = {
-  components:[{id:'uno-1',type:'uno',x:115,y:305},{id:'sensor-1',type:'ultrasonic',x:670,y:166},{id:'breadboard-1',type:'breadboard',x:640,y:444}],
+  components:[{id:'uno-1',type:'uno',x:115,y:305},{id:'sensor-1',type:'ultrasonic',x:670,y:166},{id:'breadboard-1',type:'breadboard',x:640,y:444},{id:'motor-1',type:'motor',x:150,y:605},{id:'motor-2',type:'motor',x:330,y:605}],
   wires:[
     {id:'wire-1',from:{component:'uno-1',pin:'5V'},to:{component:'sensor-1',pin:'VCC'},color:'#F16C75'},
     {id:'wire-2',from:{component:'uno-1',pin:'GND1'},to:{component:'sensor-1',pin:'GND'},color:'#17243B'},
     {id:'wire-3',from:{component:'uno-1',pin:'D9'},to:{component:'sensor-1',pin:'TRIG'},color:'#20C997'},
-    {id:'wire-4',from:{component:'uno-1',pin:'D10'},to:{component:'sensor-1',pin:'ECHO'},color:'#8B72E8'}
+    {id:'wire-4',from:{component:'uno-1',pin:'D10'},to:{component:'sensor-1',pin:'ECHO'},color:'#8B72E8'},
+    // Drive motors: motor-1 is the left wheel, motor-2 the right wheel in the 3D world.
+    {id:'wire-5',from:{component:'uno-1',pin:'5V'},to:{component:'motor-1',pin:'MOTOR_POSITIVE'},color:'#F16C75'},
+    {id:'wire-6',from:{component:'uno-1',pin:'GND2'},to:{component:'motor-1',pin:'MOTOR_NEGATIVE'},color:'#17243B'},
+    {id:'wire-7',from:{component:'uno-1',pin:'5V'},to:{component:'motor-2',pin:'MOTOR_POSITIVE'},color:'#F16C75'},
+    {id:'wire-8',from:{component:'uno-1',pin:'GND2'},to:{component:'motor-2',pin:'MOTOR_NEGATIVE'},color:'#17243B'}
   ]
 };
 let state = structuredClone(initial);
@@ -540,6 +545,25 @@ $('#zoom-label').addEventListener('click',resetView);
 $('#dismiss-tip').addEventListener('click',()=>{$('#connection-tip').hidden=true;});
 $('#open-library').addEventListener('click',()=>{$('#library').classList.add('open');$('#component-search').focus();});
 $('#close-library').addEventListener('click',()=>{$('#library').classList.remove('open');$('#open-library').focus();});
+
+// Restores the "Evasor de obstáculos" starter (undoable) and forgets the saved project,
+// so a reload also opens the complete circuit and its preloaded program.
+$('#reset-project').addEventListener('click',()=>{
+  if (!window.confirm('Se reemplazará el circuito actual por el evasor de obstáculos de inicio y se borrarán el proyecto y el programa guardados en este navegador. Puedes deshacerlo con Deshacer. ¿Continuar?')) return;
+  const before = snapshot();
+  if (before !== JSON.stringify(initial)) commit(before);
+  state = structuredClone(initial);
+  selection = null;
+  pending = null;
+  try {
+    localStorage.removeItem(storageKey);
+    // A saved Blockly program for the starter board would replace the preloaded avoider.
+    for (const component of initial.components) localStorage.removeItem('robokan.blocks.workspace.v1.' + component.id);
+  } catch {}
+  savedSnapshot = null;
+  render();
+  status('Evasor de obstáculos restablecido: circuito y programa listos para ejecutar.');
+});
 
 $('#save-project').addEventListener('click',()=>{
   try { localStorage.setItem(storageKey,snapshot());savedSnapshot=snapshot();updateHistory();status('Proyecto guardado en este navegador.'); }

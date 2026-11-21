@@ -1,4 +1,5 @@
 import type { RobotDefinition } from "../../core";
+import type { WorldMap } from "./map";
 
 export type WorldActuatorCommand =
   | { instanceId: string; actuatorKind: "motor"; speedPct: number }
@@ -34,6 +35,23 @@ export interface RobotWorld extends WorldApi {
   setSensorRayVisible(visible: boolean): void;
   setTraceVisible(visible: boolean): void;
   configureRobot(robot: RobotDefinition): Promise<void>;
+  /** Editable arena: user obstacles, scenery toggle and ultrasonic range. */
+  getMap(): WorldMap;
+  setMap(map: WorldMap): void;
+  /** Selected obstacle id, "robot" for the robot, or null. */
+  getSelectedObstacleId(): string | null;
+  /** Arena floor point under a page (client) coordinate, or null off the floor. */
+  floorPointAt(
+    clientX: number,
+    clientY: number,
+  ): { x: number; z: number } | null;
+  selectObstacle(id: string | null): void;
+  /** In design mode, clicking selects an obstacle and dragging moves it. */
+  setEditMode(enabled: boolean): void;
+  /** Called after map edits and selection changes; returns an unsubscribe function. */
+  onMapChange(
+    listener: (map: WorldMap, selectedId: string | null) => void,
+  ): () => void;
   dispose(): void;
 }
 
@@ -45,6 +63,8 @@ export interface WorldSnapshot {
   rightSpeedPct: number;
   isColliding: boolean;
   distanceCm: number | null;
+  /** Height of the ultrasonic sensor above the floor; lower obstacles are not detected. */
+  sensorHeightCm: number | null;
   motorSides: { instanceId: string; side: "left" | "right" }[];
   models: { instanceId: string; label: string }[];
 }

@@ -1,3 +1,6 @@
+/** Inner face of the arena walls (scene.glb walls: center ±9 m, 0.45 m thick). */
+export const ARENA_WALL_INNER_M = 8.775;
+
 export interface ObstacleBounds {
   minX: number;
   maxX: number;
@@ -50,12 +53,48 @@ function advanceStep(
   const middleHeading = (pose.headingRad + headingRad) / 2;
   const x = pose.x + Math.sin(middleHeading) * speedMps * seconds;
   const z = pose.z + Math.cos(middleHeading) * speedMps * seconds;
-  const collides = obstacles.some((bounds) => {
+  // The robot body stops at the arena walls, so the sensor can read them up close.
+  const limit = ARENA_WALL_INNER_M - radiusM;
+  const isFree = (candidateX: number, candidateZ: number) =>
+    Math.abs(candidateX) <= limit &&
+    Math.abs(candidateZ) <= limit &&
+    !collidesAt(candidateX, candidateZ, obstacles, radiusM);
+  if (isFree(x, z)) return { x, z, headingRad };
+  // Grazing contact: slide along the blocking surface by keeping the axis that
+  // is still free. Near head-on contact (little sideways motion) still stops.
+  const dx = x - pose.x;
+  const dz = z - pose.z;
+  const step = Math.hypot(dx, dz);
+  const slide = (
+    [
+      { x, z: pose.z, along: Math.abs(dx) },
+      { x: pose.x, z, along: Math.abs(dz) },
+    ] as const
+  )
+    .filter(
+      (candidate) =>
+        candidate.along > SLIDE_MIN_FRACTION * step &&
+        isFree(candidate.x, candidate.z),
+    )
+    .sort((a, b) => b.along - a.along)[0];
+  return slide
+    ? { x: slide.x, z: slide.z, headingRad }
+    : { ...pose, headingRad };
+}
+
+/** Sideways share of a step (≈ 12° off head-on) needed to slide along an obstacle. */
+const SLIDE_MIN_FRACTION = 0.2;
+
+/** True when a robot of radiusM centered at (x, z) touches any obstacle footprint. */
+export function collidesAt(
+  x: number,
+  z: number,
+  obstacles: readonly ObstacleBounds[],
+  radiusM = 0.9,
+): boolean {
+  return obstacles.some((bounds) => {
     const closestX = Math.max(bounds.minX, Math.min(x, bounds.maxX));
     const closestZ = Math.max(bounds.minZ, Math.min(z, bounds.maxZ));
     return Math.hypot(x - closestX, z - closestZ) < radiusM;
   });
-  return collides || Math.abs(x) > 8 || Math.abs(z) > 8
-    ? { ...pose, headingRad }
-    : { x, z, headingRad };
 }

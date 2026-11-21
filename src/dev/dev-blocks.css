@@ -32,13 +32,25 @@ a {
   text-decoration: none;
 }
 .brand {
-  font-weight: 900;
-  font-size: 24px;
-  letter-spacing: -0.8px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
-.brand span {
-  color: var(--blue);
-  font-size: 32px;
+.brand img {
+  display: block;
+  width: 200px;
+  height: auto;
+  object-fit: contain;
+}
+.app-header {
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-block: 10px;
+}
+@media (max-width: 600px) {
+  .brand img {
+    width: 154px;
+  }
 }
 .home-link {
   font-size: 14px;
@@ -470,6 +482,161 @@ code {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+.world-range {
+  font-variant-numeric: tabular-nums;
+}
+.world-range input {
+  width: 110px;
+}
+.world-design-toggle {
+  font-size: 12px;
+  min-height: 34px;
+  padding: 6px 10px;
+}
+.world-design-toggle[aria-pressed="true"] {
+  background: #2878f0;
+  color: white;
+  border-color: #2878f0;
+}
+.world-designer {
+  margin: 0 16px 12px;
+  padding: 12px;
+  border: 1px solid #d7e3f5;
+  border-radius: 8px;
+  background: #f7faff;
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+}
+.world-designer .code-note {
+  margin: 0;
+}
+.world-designer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.world-designer-row button,
+.world-obstacle-editor button {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 5px 10px;
+}
+.world-designer-row label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.world-obstacle-editor {
+  margin: 0;
+  border: 1px solid #d7e3f5;
+  border-radius: 6px;
+  padding: 8px 12px 12px;
+  display: grid;
+  gap: 8px;
+}
+.world-obstacle-editor legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+.world-obstacle-editor label {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.world-obstacle-editor button {
+  justify-self: start;
+}
+.world-designer-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.world-designer-heading h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.world-designer-heading span {
+  font-variant-numeric: tabular-nums;
+  color: #52627a;
+}
+/* Shape library: large picture tiles, like a 3D modelling app. */
+.shape-library {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.shape-tile {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 4px 6px;
+  border: 1px solid #dde6f2;
+  border-radius: 8px;
+  background: white;
+  font-size: 12px;
+  font-weight: 600;
+  color: #17243b;
+  cursor: grab;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.shape-tile svg {
+  width: 56px;
+  height: 56px;
+}
+.shape-tile:hover:not(:disabled),
+.shape-tile:focus-visible {
+  border-color: #2878f0;
+  box-shadow: 0 4px 12px #2878f022;
+  transform: translateY(-2px);
+}
+.shape-tile:active:not(:disabled) {
+  cursor: grabbing;
+}
+.shape-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.world-obstacle-editor legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.world-obstacle-editor legend svg {
+  width: 26px;
+  height: 26px;
+}
+.world-obstacle-warning {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 4px solid #ffb84d;
+  background: #fff4df;
+  color: #17243b;
+}
+.world-robot-position {
+  margin: 0;
+  color: #52627a;
+  font-variant-numeric: tabular-nums;
+}
+.world-viewport canvas.is-designing {
+  outline: 2px dashed #2878f0;
+  outline-offset: -2px;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shape-tile {
+    transition: none;
+  }
+  .shape-tile:hover:not(:disabled) {
+    transform: none;
+  }
 }
 .world-telemetry {
   margin: 0;

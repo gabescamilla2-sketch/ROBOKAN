@@ -1,0 +1,24 @@
+World capture and interface branding — 21 November 2026
+Root: C:/Users/Gabriell/Downloads/ROBOKAN
+
+Changes:
+- Supplied 842x710 environment screenshot copied byte-identically to assets/home/world-3d.png. It fills the previously reserved homepage footer space, uses its natural ratio and opens the world example on click.
+- Official existing logo/isotipo reused in static circuits rail/header/status bar, React circuit header, blocks header and browser icons.
+- Actual circuit and blocks gallery captures refreshed so their branding matches the interfaces. The blocks capture is now 1600x1461; HTML dimensions were updated.
+- The project context paragraph and existing homepage regression test were updated.
+
+Checks:
+- Observed RED: reserved-area test failed before the capture existed.
+- Final npm test: 9 homepage tests + 86 Vitest tests passed (95 total).
+- Final npm run build: passed; existing large-chunk warnings remain.
+- Screenshot review: homepage 1440 and 390, static circuit 1600, React circuit1024, blocks1600 and390. No capture clipping or logo overlap observed in changed areas. Skill shoot output did not report sideways scrolling.
+- No raw ROBOKAN body-text wordmarks remain in index.html/circuits.html; React occurrences are image alt text. Browser titles, accessible names and internal identifiers remain meaningful text.
+- New image and updated captures/brand assets are present in dist and byte-identical to their sources.
+
+Limits:
+- Full taste template gate was not rerun for these localized resource/branding edits. The earlier template-layout report is historical, not a current PASS.
+- Native review assessment did not run to a verdict because the checkout has untracked files requiring an inventory declaration. No review approval is claimed.
+- Unrelated changes to electrical rules, program examples, circuits.js and tests occurred concurrently in the shared checkout. They were preserved; they are not part of this branding change.
+- No commits, publishing or remote operations were performed.
+
+Risk: none for the authored presentation-only changes.

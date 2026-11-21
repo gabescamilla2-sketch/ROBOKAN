@@ -718,3 +718,49 @@ it.each(["unwired", "referenced_board", "isolated_board"])(
     );
   },
 );
+
+describe("DC motor as a non-polarized load", () => {
+  const motorSpec: CircuitRuleSpec = {
+    specId: "dc-motor",
+    category: "actuator",
+    actuatorKind: "motor",
+    pins: [
+      { pinName: "MOTOR_POSITIVE", pinType: "passive" },
+      { pinName: "MOTOR_NEGATIVE", pinType: "passive" },
+    ],
+  };
+  const run = (wires: [string, string][]) =>
+    evaluateCircuitRules(
+      {
+        componentInstances: [
+          { instanceId: "arduino-uno:1", specId: "arduino-uno" },
+          { instanceId: "dc-motor:1", specId: "dc-motor" },
+        ],
+        wires: wires.map(([fromPin, toPin], index) => ({
+          wireId: `wire:${index + 1}`,
+          fromPin,
+          toPin,
+        })),
+      },
+      [arduinoUnoSpec, motorSpec],
+    );
+
+  it.each([
+    ["forward", "MOTOR_POSITIVE", "MOTOR_NEGATIVE"],
+    ["reversed", "MOTOR_NEGATIVE", "MOTOR_POSITIVE"],
+  ])("is powered when wired %s between 5V and GND", (_, supplied, grounded) => {
+    const result = run([
+      ["arduino-uno:1/5V", `dc-motor:1/${supplied}`],
+      ["arduino-uno:1/GND_1", `dc-motor:1/${grounded}`],
+    ]);
+    expect(result.statusByInstance["dc-motor:1"]).toBe("ok");
+    expect(
+      result.violations.filter((violation) => violation.instanceId === "dc-motor:1"),
+    ).toEqual([]);
+  });
+
+  it("is unpowered when only one terminal is connected", () => {
+    const result = run([["arduino-uno:1/5V", "dc-motor:1/MOTOR_POSITIVE"]]);
+    expect(result.statusByInstance["dc-motor:1"]).toBe("unpowered");
+  });
+});

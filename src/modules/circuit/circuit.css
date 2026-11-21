@@ -42,14 +42,19 @@ select:focus-visible,
   color: white;
 }
 .workbench-brand {
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: #ffffff;
   text-decoration: none;
-  font-size: 26px;
-  font-weight: 750;
-  letter-spacing: -0.05em;
 }
-.workbench-brand span {
-  color: #ffd775;
+.workbench-brand img {
+  display: block;
+  width: 168px;
+  height: 44px;
+  object-fit: contain;
 }
 .workbench-header label {
   display: flex;

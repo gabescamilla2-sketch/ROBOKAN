@@ -56,7 +56,14 @@ function CircuitWorkbench() {
           className="workbench-brand"
           aria-label={t("circuit.home")}
         >
-          ROBOKAN<span>.</span>
+          <img
+            src={
+              new URL("../../assets/home/brand-logo.png", import.meta.url).href
+            }
+            width="200"
+            height="53"
+            alt="ROBOKAN"
+          />
         </a>
         <a href="./index.html" className="home-link">
           {t("circuit.home")}

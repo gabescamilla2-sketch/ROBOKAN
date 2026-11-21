@@ -1,0 +1,30 @@
+
+> robokan@0.1.0 test
+> node --test tests/home-menu.test.cjs && vitest run --exclude '**/*.cjs'
+
+✔ start button targets the new circuit page (1.0741ms)
+✔ home script initializes with browser APIs (59.1041ms)
+✔ arrow keys select and focus the next language tab (19.0403ms)
+✔ arrow keys wrap to the last tab (14.2681ms)
+✔ mutation observer translates generated animation controls (15.1725ms)
+✔ home presents real interface captures without a fabricated workbench (10.7941ms)
+✔ home tool tabs update screenshot visibility and editor destination (14.0824ms)
+✔ home uses the supplied logos and fills the reserved space with the 3D capture (12.1438ms)
+✔ home robot animation can be paused and resumed (11.868ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 944.6196
+
+ RUN  v5.1.1 C:/Users/Gabriell/Downloads/ROBOKAN
+
+
+ Test Files  18 passed (18)
+      Tests  86 passed (86)
+   Start at  02:33:18
+   Duration  2.62s (import 60%, tests 24%, environment 8%, transform 7%, worker 1%)
+

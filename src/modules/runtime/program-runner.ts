@@ -7,6 +7,11 @@ import type {
 } from "../../core";
 
 export type WaitInstruction = Extract<Instruction, { op: "wait" }>;
+type DriveUntilInstruction = Extract<Instruction, { op: "drive_until_distance" }>;
+
+/** How often drive_until_distance samples the ultrasonic sensor. */
+export const DRIVE_UNTIL_POLL_MS = 50;
+const DRIVE_UNTIL_RESULT_ID = "distance_cm";
 export type ProgramStatus =
   "idle" | "running" | "paused" | "completed" | "error";
 
@@ -71,6 +76,13 @@ export class ProgramRunner {
       }
       if (instruction.op !== "wait" && !this.executeHardware)
         throw new Error("Hardware adapter required");
+      if (
+        instruction.op === "drive_until_distance" &&
+        (!Number.isFinite(instruction.thresholdCm) ||
+          instruction.thresholdCm <= 0 ||
+          !Number.isFinite(instruction.speedPct))
+      )
+        throw new RangeError("Drive threshold and speed must be finite");
       return { ...instruction };
     });
     this.stop();
@@ -221,6 +233,10 @@ export class ProgramRunner {
       return;
     }
     this.remainingMs = 0;
+    if (instruction.op === "drive_until_distance") {
+      this.startDriveUntil(instruction);
+      return;
+    }
     // Track attempted orders so stop also neutralizes a command still in flight.
     if (instruction.op === "motor_write")
       this.motorOrders.set(instruction.instanceId, instruction);
@@ -254,6 +270,65 @@ export class ProgramRunner {
           this.timer = undefined;
           this.advance();
         }, 0);
+      })
+      .catch((error) => this.handleError(error, epoch));
+  }
+
+  /**
+   * Drives both motors, then samples the distance every DRIVE_UNTIL_POLL_MS
+   * until it is below the threshold. Pause/stop cancel through the epoch and
+   * stop the tracked motors; resume restarts this instruction.
+   */
+  private startDriveUntil(instruction: DriveUntilInstruction): void {
+    const epoch = this.epoch;
+    const motors = [instruction.leftInstanceId, instruction.rightInstanceId];
+    const order = (instanceId: string, speedPct: number) =>
+      ({ op: "motor_write", instanceId, speedPct }) as const;
+    const execute = async (hardware: HardwareInstruction) => {
+      const result = await this.executeHardware!(hardware, this.controller.signal);
+      if (epoch !== this.epoch || this.currentStatus !== "running") return null;
+      return this.acceptResult(result) ? result : null;
+    };
+    const poll = async (): Promise<void> => {
+      const result = await execute({
+        op: "read_distance",
+        trigPinName: instruction.trigPinName,
+        echoPinName: instruction.echoPinName,
+        resultId: DRIVE_UNTIL_RESULT_ID,
+      });
+      if (!result) return;
+      if (
+        result.kind !== "reading" ||
+        result.resultId !== DRIVE_UNTIL_RESULT_ID ||
+        !Number.isFinite(result.reading)
+      )
+        throw new Error("Invalid distance reading result");
+      this.resultReadings[DRIVE_UNTIL_RESULT_ID] = result.reading;
+      if (result.reading < instruction.thresholdCm) {
+        for (const instanceId of motors) {
+          this.motorOrders.set(instanceId, order(instanceId, 0));
+          if (!(await execute(order(instanceId, 0)))) return;
+        }
+        this.timer = setTimeout(() => {
+          this.timer = undefined;
+          this.advance();
+        }, 0);
+        return;
+      }
+      this.timer = setTimeout(() => {
+        this.timer = undefined;
+        void poll().catch((error) => this.handleError(error, epoch));
+      }, DRIVE_UNTIL_POLL_MS);
+    };
+    void Promise.resolve()
+      .then(async () => {
+        for (const instanceId of motors) {
+          if (epoch !== this.epoch) return;
+          const motorOrder = order(instanceId, instruction.speedPct);
+          this.motorOrders.set(instanceId, motorOrder);
+          if (!(await execute(motorOrder))) return;
+        }
+        await poll();
       })
       .catch((error) => this.handleError(error, epoch));
   }

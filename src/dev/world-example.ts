@@ -1,5 +1,47 @@
+import type { RobotDefinition } from "../core";
 import type { ProgramBlock } from "../modules/blocks";
 import { createExample } from "./circuit-fixtures";
+
+/** Distance at which the preloaded avoider turns away from an obstacle. */
+export const AVOIDER_THRESHOLD_CM = 40;
+
+/**
+ * Demo obstacle-avoider: drive forward until the ultrasonic sensor reads less
+ * than AVOIDER_THRESHOLD_CM, back up a little to make room, then turn right in
+ * place. With "Repetir programa" it keeps avoiding. dc-motor:1 is the left
+ * wheel and dc-motor:2 the right one.
+ */
+export function createAvoiderProgram(): ProgramBlock[] {
+  return [
+    {
+      type: "drive_until_distance",
+      leftInstanceId: "dc-motor:1",
+      rightInstanceId: "dc-motor:2",
+      speedPct: 45,
+      trigPinName: "D9",
+      echoPinName: "D10",
+      thresholdCm: AVOIDER_THRESHOLD_CM,
+    },
+    { type: "motor_write", instanceId: "dc-motor:1", speedPct: -45 },
+    { type: "motor_write", instanceId: "dc-motor:2", speedPct: -45 },
+    { type: "wait", delayMs: 400 },
+    { type: "motor_write", instanceId: "dc-motor:1", speedPct: 45 },
+    { type: "motor_write", instanceId: "dc-motor:2", speedPct: -45 },
+    { type: "wait", delayMs: 900 },
+  ];
+}
+
+/** Program to preload for a robot: the avoider routine when both drive motors exist. */
+export function presetProgramFor(
+  robot: Pick<RobotDefinition, "componentInstances">,
+): ProgramBlock[] | undefined {
+  const ids = new Set(
+    robot.componentInstances.map((instance) => instance.instanceId),
+  );
+  return ids.has("dc-motor:1") && ids.has("dc-motor:2")
+    ? createAvoiderProgram()
+    : undefined;
+}
 
 export function createWorldExample() {
   const robot = createExample("avoider").robot;
@@ -43,23 +85,6 @@ export function createWorldExample() {
       colorHex: "#2878F0",
     })),
   ];
-  const program: ProgramBlock[] = [
-    { type: "motor_write", instanceId: "dc-motor:1", speedPct: 45 },
-    { type: "motor_write", instanceId: "dc-motor:2", speedPct: 45 },
-    { type: "wait", delayMs: 2000 },
-    {
-      type: "read_distance",
-      trigPinName: "D9",
-      echoPinName: "D10",
-      resultId: "distance_cm",
-    },
-    { type: "motor_write", instanceId: "dc-motor:2", speedPct: -45 },
-    { type: "wait", delayMs: 900 },
-    { type: "motor_write", instanceId: "dc-motor:1", speedPct: -45 },
-    { type: "wait", delayMs: 800 },
-    { type: "motor_write", instanceId: "dc-motor:1", speedPct: 0 },
-    { type: "motor_write", instanceId: "dc-motor:2", speedPct: 0 },
-    { type: "wait", delayMs: 1000 },
-  ];
+  const program = createAvoiderProgram();
   return { robot, program };
 }

@@ -129,14 +129,21 @@ test('home tool tabs update screenshot visibility and editor destination', (t) =
   );
 });
 
-test('home uses the supplied logos and keeps an empty footer reserve', () => {
+test('home uses the supplied logos and fills the reserved space with the 3D capture', () => {
   const dom = new JSDOM(html);
   const document = dom.window.document;
   assert.ok(document.querySelector('.nav__logo img[data-brand-logo]'));
   assert.ok(document.querySelector('footer img[data-brand-logo]'));
   const reserve = document.querySelector('[data-footer-reserve]');
   assert.ok(reserve);
-  assert.equal(reserve.textContent.trim(), '');
+  const worldCapture = reserve.querySelector('img[data-world-capture]');
+  assert.ok(worldCapture);
+  assert.equal(reserve.getAttribute('aria-hidden'), null);
+  assert.ok(fs.existsSync(path.join(root, worldCapture.getAttribute('src'))));
+  assert.equal(
+    worldCapture.closest('a').getAttribute('href'),
+    'blocks.html?example=motors&world=1',
+  );
   assert.equal(document.querySelector('.home-wordmark'), null);
   const walker = document.createTreeWalker(
     document.body,

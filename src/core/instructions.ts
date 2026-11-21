@@ -17,9 +17,26 @@ export type Instruction =
       instanceId: string;
       isOn: boolean;
       frequencyHz: number;
+    }
+  | {
+      /**
+       * Runner-level composite: drives both motors forward, polls the
+       * ultrasonic sensor and stops them once the reading is below thresholdCm.
+       */
+      op: "drive_until_distance";
+      leftInstanceId: string;
+      rightInstanceId: string;
+      speedPct: number;
+      trigPinName: string;
+      echoPinName: string;
+      thresholdCm: number;
     };
 
-export type HardwareInstruction = Exclude<Instruction, { op: "wait" }>;
+/** Instructions an adapter executes directly; the runner owns wait and drive_until_distance. */
+export type HardwareInstruction = Exclude<
+  Instruction,
+  { op: "wait" } | { op: "drive_until_distance" }
+>;
 export type InstructionResult =
   | { kind: "completed" }
   | { kind: "reading"; resultId: string; reading: number }

@@ -11,6 +11,8 @@ import {
 export interface CircuitRuleSpec {
   specId: string;
   category: string;
+  /** Present for actuators; "motor" marks a non-polarized two-terminal load. */
+  actuatorKind?: string;
   supplyVoltageV?: number;
   maxVoltageV?: number;
   pins: readonly {
@@ -305,6 +307,26 @@ export function evaluateCircuitRules(
       continue;
     if (statusByInstance[componentInstance.instanceId] === "burned") continue;
     if (componentSpec.specId === "led") continue; // LED paths are checked separately below.
+    if (componentSpec.actuatorKind === "motor") {
+      // A DC motor is non-polarized: it runs (in either direction) whenever its
+      // two terminals reach different voltages; reversing them never burns it.
+      const [firstVoltages = [], secondVoltages = []] = componentSpec.pins.map(
+        (pin) =>
+          reachableVoltages(
+            getNetId(componentInstance.instanceId, pin.pinName),
+          ),
+      );
+      const driveVoltageV = Math.max(
+        0,
+        ...firstVoltages.flatMap((firstV) =>
+          secondVoltages.map((secondV) => Math.abs(firstV - secondV)),
+        ),
+      );
+      if (driveVoltageV > 0)
+        supplyVoltageByInstance.set(componentInstance.instanceId, driveVoltageV);
+      else statusByInstance[componentInstance.instanceId] = "unpowered";
+      continue;
+    }
     const positiveVoltages = findPins(componentSpec, isPositivePin).flatMap(
       (pinName) =>
         reachableVoltages(

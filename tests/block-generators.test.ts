@@ -19,7 +19,7 @@ describe("block program outputs", () => {
 
   it("accepts valid blocks and rejects an unsupported pin", () => {
     expect(validateProgram([{ type: "wait", delayMs: 1000 }, { type: "digital_write", pinName: "D3", digitalValue: 1 }])).toEqual([]);
-    expect(validateProgram([{ type: "digital_write", pinName: "GPIO17", digitalValue: 1 }])).toEqual(["invalidPin"]);
+    expect(validateProgram([{ type: "digital_write", pinName: "D14", digitalValue: 1 }])).toEqual(["invalidPin"]);
   });
   it("updates the C++ and instructions when wait duration changes", () => {
     expect(generateCppProgram([{ type: "wait", delayMs: 5000 }])).toContain("delay(5000);");

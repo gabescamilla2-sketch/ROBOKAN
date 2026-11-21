@@ -206,6 +206,55 @@ export function BlocksEditor({
           colour: "#20C997",
         },
         {
+          type: "robokan_drive_until_distance",
+          message0: labels.driveUntilMessage,
+          tooltip: labels.driveUntilTooltip,
+          args0: [
+            { type: "field_input", name: "LEFT", text: "dc-motor:1" },
+            { type: "field_input", name: "RIGHT", text: "dc-motor:2" },
+            {
+              type: "field_number",
+              name: "SPEED",
+              value: 45,
+              min: 1,
+              max: 100,
+            },
+          ],
+          // Three short rows keep the block narrow and the threshold visible.
+          message1: labels.driveUntilSensor,
+          args1: [
+            {
+              type: "field_dropdown",
+              name: "TRIG",
+              options: [...Array.from({ length: 14 }, (_, index) => [
+                `D${index}`,
+                `D${index}`,
+              ]), ...[17, 22, 23, 24, 27].map((pin) => [`GPIO${pin}`, `GPIO${pin}`])],
+            },
+            {
+              type: "field_dropdown",
+              name: "ECHO",
+              options: [...Array.from({ length: 14 }, (_, index) => [
+                `D${index}`,
+                `D${index}`,
+              ]), ...[17, 22, 23, 24, 27].map((pin) => [`GPIO${pin}`, `GPIO${pin}`])],
+            },
+          ],
+          message2: labels.driveUntilCondition,
+          args2: [
+            {
+              type: "field_number",
+              name: "THRESHOLD",
+              value: 40,
+              min: 5,
+              max: 400,
+            },
+          ],
+          previousStatement: null,
+          nextStatement: null,
+          colour: "#20C997",
+        },
+        {
           type: "robokan_read_distance",
           message0: labels.distanceMessage,
           args0: [
@@ -313,7 +362,10 @@ export function BlocksEditor({
             kind: "category",
             name: labels.toolbox.motion,
             colour: "#20C997",
-            contents: [{ kind: "block", type: "robokan_motor_write" }],
+            contents: [
+              { kind: "block", type: "robokan_motor_write" },
+              { kind: "block", type: "robokan_drive_until_distance" },
+            ],
           },
           {
             kind: "category",
@@ -388,6 +440,17 @@ export function BlocksEditor({
                 speedPct: Number(block.getFieldValue("SPEED")),
               });
               break;
+            case "robokan_drive_until_distance":
+              blocks.push({
+                type: "drive_until_distance",
+                leftInstanceId: block.getFieldValue("LEFT"),
+                rightInstanceId: block.getFieldValue("RIGHT"),
+                speedPct: Number(block.getFieldValue("SPEED")),
+                trigPinName: block.getFieldValue("TRIG"),
+                echoPinName: block.getFieldValue("ECHO"),
+                thresholdCm: Number(block.getFieldValue("THRESHOLD")),
+              });
+              break;
             case "robokan_read_distance":
               blocks.push({
                 type: "read_distance",
@@ -443,6 +506,9 @@ export function BlocksEditor({
         isOn: "ON",
         frequencyHz: "FREQUENCY",
         angleDeg: "ANGLE",
+        leftInstanceId: "LEFT",
+        rightInstanceId: "RIGHT",
+        thresholdCm: "THRESHOLD",
       };
       for (const [key, value] of Object.entries(definition)) {
         if (key !== "type")

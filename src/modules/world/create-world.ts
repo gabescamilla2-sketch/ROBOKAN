@@ -1,22 +1,44 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Matrix, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Ray } from "@babylonjs/core/Culling/ray";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import type { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/core/Culling/ray";
+import "@babylonjs/core/Rendering/outlineRenderer";
 import "@babylonjs/loaders/glTF";
 import type { RobotDefinition } from "../../core";
 import type { RobotWorld, WorldActuatorCommand } from "./types";
+import {
+  ROBOT_SELECTION_ID,
+  clampUltrasonicRangeCm,
+  createDefaultWorldMap,
+  obstacleBounds,
+  setRobotStart,
+  updateObstacle,
+  type ObstacleKind,
+  type WorldMap,
+} from "./map";
 import { ComponentModelLibrary } from "./component-models";
 import { createRobotModel, type RobotModel } from "./robot-model";
 import { getComponentModel } from "../components";
-import { advanceRobot, type ObstacleBounds, type RobotPose } from "./motion";
+import {
+  advanceRobot,
+  collidesAt,
+  type ObstacleBounds,
+  type RobotPose,
+} from "./motion";
+
+/** Arena walls are raised from 0.75 m to 1.5 m so the ultrasonic sensor sees them. */
+const ARENA_WALL_HEIGHT_SCALE = 2;
 
 export async function createRobotWorld(
   canvas: HTMLCanvasElement,
@@ -74,10 +96,7 @@ export async function createRobotWorld(
     if (!robot) throw new Error("El modelo 3D no contiene robot-chassis.");
     // The arena GLB supplies scenery only; the robot is assembled from Rol 5 assets.
     robot.setEnabled(false);
-    const obstacles = imported.meshes.filter((mesh) =>
-      /^(arena-wall|obstacle-|gas-tank|fire-base)/.test(mesh.name),
-    );
-    const bounds: ObstacleBounds[] = obstacles.map((mesh) => {
+    const meshBounds = (mesh: AbstractMesh): ObstacleBounds => {
       mesh.computeWorldMatrix(true);
       const box = mesh.getBoundingInfo().boundingBox;
       return {
@@ -86,7 +105,36 @@ export async function createRobotWorld(
         minZ: box.minimumWorld.z,
         maxZ: box.maximumWorld.z,
       };
-    });
+    };
+    // Arena walls, gas tank and fire never move; the three scenery obstacles can be hidden.
+    // Collisions and the ultrasonic ray share the same tall solids: the flat
+    // fire and gas bases sit below the sensor, so they neither block nor echo.
+    const fixedMeshes = imported.meshes.filter((mesh) =>
+      /^(arena-wall-|gas-tank$|outer-flame$)/.test(mesh.name),
+    );
+    // The scenery walls are 0.75 m high but the HC-SR04 sits about 1 m up, so
+    // its ray passed over them. Raise them (base stays on the floor) so the
+    // sensor sees the arena edge like any other obstacle.
+    for (const wall of fixedMeshes.filter((mesh) => /^arena-wall-/.test(mesh.name))) {
+      wall.scaling.y *= ARENA_WALL_HEIGHT_SCALE;
+      wall.position.y *= ARENA_WALL_HEIGHT_SCALE;
+      wall.computeWorldMatrix(true);
+    }
+    const sceneryObstacleMeshes = imported.meshes.filter((mesh) =>
+      /^obstacle-/.test(mesh.name),
+    );
+    const fixedBounds = fixedMeshes.map(meshBounds);
+    const sceneryBounds = sceneryObstacleMeshes.map(meshBounds);
+    // User-designed arena: one box mesh per map obstacle.
+    let worldMap: WorldMap = createDefaultWorldMap();
+    let selectedObstacleId: string | null = null;
+    let isEditing = false;
+    const userObstacleMeshes = new Map<string, Mesh>();
+    const mapListeners = new Set<
+      (map: WorldMap, selectedId: string | null) => void
+    >();
+    let bounds: ObstacleBounds[] = [];
+    let rayTargets = new Set<AbstractMesh>();
     imported.meshes
       .find((mesh) => mesh.name === "ultrasonic-ray")
       ?.setEnabled(false);
@@ -259,11 +307,218 @@ export async function createRobotWorld(
         0,
         Math.cos(pose.headingRad),
       );
-      const hit = scene.pickWithRay(new Ray(origin, direction, 4.5), (mesh) =>
-        obstacles.includes(mesh),
+      const rangeM = worldMap.ultrasonicRangeCm / 100;
+      const hit = scene.pickWithRay(new Ray(origin, direction, rangeM), (mesh) =>
+        rayTargets.has(mesh),
       );
-      return (hit?.hit ? hit.distance : 4.5) * 100;
+      return (hit?.hit ? hit.distance : rangeM) * 100;
     };
+    const notifyMap = () =>
+      mapListeners.forEach((listener) => listener(worldMap, selectedObstacleId));
+    const refreshCollisionTargets = () => {
+      bounds = [
+        ...fixedBounds,
+        ...(worldMap.showSceneryObstacles ? sceneryBounds : []),
+        ...worldMap.obstacles.map(obstacleBounds),
+      ];
+      rayTargets = new Set<AbstractMesh>([
+        ...fixedMeshes,
+        ...(worldMap.showSceneryObstacles ? sceneryObstacleMeshes : []),
+        ...userObstacleMeshes.values(),
+      ]);
+    };
+    // Ring drawn under the robot while it is selected in design mode.
+    const robotRing = MeshBuilder.CreateTorus(
+      "robot-selection",
+      { diameter: 2.1, thickness: 0.07, tessellation: 48 },
+      scene,
+    );
+    const robotRingMaterial = new StandardMaterial("robot-selection-material", scene);
+    robotRingMaterial.emissiveColor = Color3.FromHexString("#FFB84D");
+    robotRingMaterial.disableLighting = true;
+    robotRing.material = robotRingMaterial;
+    robotRing.isPickable = false;
+    robotRing.setEnabled(false);
+    const highlightSelection = () => {
+      userObstacleMeshes.forEach((mesh, id) => {
+        mesh.renderOutline = id === selectedObstacleId;
+      });
+      robotRing.setEnabled(selectedObstacleId === ROBOT_SELECTION_ID);
+    };
+    /** Unit-sized mesh for a shape; scaling stretches it to the obstacle size. */
+    const createShapeMesh = (name: string, kind: ObstacleKind): Mesh => {
+      switch (kind) {
+        case "cylinder":
+          return MeshBuilder.CreateCylinder(
+            name,
+            { diameter: 1, height: 1, tessellation: 32 },
+            scene,
+          );
+        case "sphere":
+          return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 16 }, scene);
+        case "cone":
+          return MeshBuilder.CreateCylinder(
+            name,
+            { diameterTop: 0, diameterBottom: 1, height: 1, tessellation: 32 },
+            scene,
+          );
+        case "pyramid": {
+          // A 4-sided cylinder has its corners on the axes; turn it so its
+          // square base lines up with the width/depth footprint.
+          const mesh = MeshBuilder.CreateCylinder(
+            name,
+            { diameterTop: 0, diameterBottom: Math.SQRT2, height: 1, tessellation: 4 },
+            scene,
+          );
+          mesh.rotation.y = Math.PI / 4;
+          mesh.bakeCurrentTransformIntoVertices();
+          return mesh;
+        }
+        default:
+          return MeshBuilder.CreateBox(name, { size: 1 }, scene);
+      }
+    };
+    const rebuildObstacles = () => {
+      userObstacleMeshes.forEach((mesh) => mesh.dispose(false, true));
+      userObstacleMeshes.clear();
+      for (const obstacle of worldMap.obstacles) {
+        const mesh = createShapeMesh(`user-obstacle:${obstacle.id}`, obstacle.kind);
+        mesh.scaling.set(obstacle.widthM, obstacle.heightM, obstacle.depthM);
+        mesh.position.set(obstacle.x, obstacle.heightM / 2, obstacle.z);
+        const material = new StandardMaterial(
+          `user-obstacle-material:${obstacle.id}`,
+          scene,
+        );
+        material.diffuseColor = Color3.FromHexString(obstacle.colorHex);
+        mesh.material = material;
+        mesh.outlineColor = Color3.FromHexString("#FFB84D");
+        mesh.outlineWidth = 0.04;
+        mesh.metadata = { obstacleId: obstacle.id };
+        // Ray queries can run before the next frame; keep picking bounds current.
+        mesh.computeWorldMatrix(true);
+        userObstacleMeshes.set(obstacle.id, mesh);
+      }
+      sceneryObstacleMeshes.forEach((mesh) =>
+        mesh.setEnabled(worldMap.showSceneryObstacles),
+      );
+      refreshCollisionTargets();
+      highlightSelection();
+    };
+    const placeRobotAtStart = () => {
+      pose = {
+        x: worldMap.robotStart.x,
+        z: worldMap.robotStart.z,
+        headingRad: (worldMap.robotStart.headingDeg * Math.PI) / 180,
+      };
+      syncPose();
+    };
+    const setMap = (next: WorldMap) => {
+      const previousStart = worldMap.robotStart;
+      worldMap = {
+        ...next,
+        obstacles: next.obstacles.map((obstacle) => ({ ...obstacle })),
+        ultrasonicRangeCm: clampUltrasonicRangeCm(next.ultrasonicRangeCm),
+        robotStart: { ...next.robotStart },
+      };
+      if (
+        selectedObstacleId &&
+        selectedObstacleId !== ROBOT_SELECTION_ID &&
+        !worldMap.obstacles.some((obstacle) => obstacle.id === selectedObstacleId)
+      )
+        selectedObstacleId = null;
+      rebuildObstacles();
+      // A new start pose (dragged, turned or loaded) moves the robot right away.
+      if (
+        previousStart.x !== worldMap.robotStart.x ||
+        previousStart.z !== worldMap.robotStart.z ||
+        previousStart.headingDeg !== worldMap.robotStart.headingDeg
+      )
+        placeRobotAtStart();
+      notifyMap();
+    };
+    const selectObstacle = (id: string | null) => {
+      selectedObstacleId =
+        id === ROBOT_SELECTION_ID ||
+        (id && worldMap.obstacles.some((obstacle) => obstacle.id === id))
+          ? id
+          : null;
+      highlightSelection();
+      notifyMap();
+    };
+    /** Floor point (y = 0) under a canvas pixel, or null above the horizon. */
+    const floorPointAtCanvas = (canvasX: number, canvasY: number) => {
+      const ray = scene.createPickingRay(
+        canvasX,
+        canvasY,
+        Matrix.Identity(),
+        camera,
+      );
+      if (Math.abs(ray.direction.y) < 1e-6) return null;
+      const t = -ray.origin.y / ray.direction.y;
+      return t > 0 ? ray.origin.add(ray.direction.scale(t)) : null;
+    };
+    const floorPointUnderPointer = () =>
+      floorPointAtCanvas(scene.pointerX, scene.pointerY);
+    // Design mode: click selects an obstacle or the robot; dragging moves it on the floor.
+    let drag: { id: string; offsetX: number; offsetZ: number } | null = null;
+    scene.onPointerObservable.add((info) => {
+      if (!isEditing) return;
+      if (info.type === PointerEventTypes.POINTERDOWN) {
+        const meshes = new Set<AbstractMesh>(userObstacleMeshes.values());
+        const robotRoot = assembly?.root;
+        const hit = scene.pick(
+          scene.pointerX,
+          scene.pointerY,
+          (mesh) =>
+            meshes.has(mesh) ||
+            Boolean(robotRoot && mesh.isDescendantOf(robotRoot)),
+        );
+        const picked = hit?.pickedMesh;
+        const id: string | undefined =
+          picked && robotRoot && picked.isDescendantOf(robotRoot)
+            ? ROBOT_SELECTION_ID
+            : (picked?.metadata?.obstacleId as string | undefined);
+        selectObstacle(id ?? null);
+        const point = floorPointUnderPointer();
+        const target =
+          id === ROBOT_SELECTION_ID
+            ? { x: pose.x, z: pose.z }
+            : worldMap.obstacles.find((item) => item.id === id);
+        if (id && point && target) {
+          drag = { id, offsetX: target.x - point.x, offsetZ: target.z - point.z };
+          camera.detachControl();
+        }
+      } else if (info.type === PointerEventTypes.POINTERMOVE && drag) {
+        const point = floorPointUnderPointer();
+        if (!point) return;
+        const id = drag.id;
+        const x = point.x + drag.offsetX;
+        const z = point.z + drag.offsetZ;
+        if (id === ROBOT_SELECTION_ID) {
+          // The robot never lands on top of an obstacle: keep the last free spot.
+          const start = setRobotStart(worldMap, { x, z }).robotStart;
+          if (
+            collidesAt(start.x, start.z, bounds, assembly?.collisionRadius ?? 0.9)
+          )
+            return;
+          worldMap = { ...worldMap, robotStart: start };
+          placeRobotAtStart();
+          return;
+        }
+        worldMap = updateObstacle(worldMap, id, { x, z });
+        const moved = worldMap.obstacles.find((item) => item.id === id);
+        const mesh = userObstacleMeshes.get(id);
+        if (moved && mesh) {
+          mesh.position.set(moved.x, moved.heightM / 2, moved.z);
+          mesh.computeWorldMatrix(true);
+        }
+        refreshCollisionTargets();
+      } else if (info.type === PointerEventTypes.POINTERUP && drag) {
+        drag = null;
+        camera.attachControl(canvas, true);
+        notifyMap();
+      }
+    });
     const applyActuator = (command: WorldActuatorCommand) => {
       if (disposed) throw new Error("El mundo 3D está cerrado.");
       const expectedSpec = {
@@ -315,7 +570,11 @@ export async function createRobotWorld(
       }
     };
     const reset = () => {
-      pose = { x: -5.5, z: -5.5, headingRad: 0 };
+      pose = {
+        x: worldMap.robotStart.x,
+        z: worldMap.robotStart.z,
+        headingRad: (worldMap.robotStart.headingDeg * Math.PI) / 180,
+      };
       motorSpeeds.clear();
       leftSpeedPct = 0;
       rightSpeedPct = 0;
@@ -338,6 +597,7 @@ export async function createRobotWorld(
       servoNodes.forEach((servo) => servo.rotation.setAll(0));
       syncPose();
     };
+    rebuildObstacles();
     await configureRobot(robotDefinition);
     reset();
     engine.runRenderLoop(() => {
@@ -414,6 +674,7 @@ export async function createRobotWorld(
         );
         targetMarker.position.copyFrom(end);
       }
+      robotRing.position.set(pose.x, 0.04, pose.z);
       if (followCamera && assembly)
         camera.target.copyFrom(assembly.root.position);
       scene.render();
@@ -461,6 +722,9 @@ export async function createRobotWorld(
           rightSpeedPct,
           isColliding,
           distanceCm: sensor ? distance(sensor.instanceId) : null,
+          sensorHeightCm: sensor
+            ? Math.round(sensorPosition(sensor.instanceId, "hc-sr04").y * 100)
+            : null,
           motorSides: motorSides.map((motor) => ({ ...motor })),
           models: [...(assembly?.components ?? [])].map(
             ([instanceId, model]) => ({
@@ -491,6 +755,31 @@ export async function createRobotWorld(
       },
       reset,
       configureRobot,
+      getMap: () => ({
+        ...worldMap,
+        obstacles: worldMap.obstacles.map((obstacle) => ({ ...obstacle })),
+      }),
+      setMap,
+      getSelectedObstacleId: () => selectedObstacleId,
+      floorPointAt: (clientX, clientY) => {
+        const rect = canvas.getBoundingClientRect();
+        const point = floorPointAtCanvas(clientX - rect.left, clientY - rect.top);
+        return point ? { x: point.x, z: point.z } : null;
+      },
+      selectObstacle,
+      setEditMode: (enabled) => {
+        isEditing = enabled;
+        if (!enabled && drag) {
+          drag = null;
+          camera.attachControl(canvas, true);
+        }
+      },
+      onMapChange: (listener) => {
+        mapListeners.add(listener);
+        return () => {
+          mapListeners.delete(listener);
+        };
+      },
       dispose,
     };
   } catch (error) {

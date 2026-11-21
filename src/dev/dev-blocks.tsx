@@ -19,7 +19,7 @@ import { createCircuitProgramAdapter } from "./circuit-program-adapter";
 import { importCircuitWorkbench } from "./import-circuit-workbench";
 import { evaluate, createExecuteHardwareInstruction } from "../modules/circuit";
 import type { RobotWorld } from "../modules/world";
-import { createWorldExample } from "./world-example";
+import { createWorldExample, presetProgramFor } from "./world-example";
 const WorldViewport = lazy(() =>
   import("../modules/world").then((module) => ({
     default: module.WorldViewport,
@@ -49,9 +49,11 @@ function BlocksPage() {
         const selectedBoard = new URLSearchParams(location.search).get("board");
         if (
           selectedBoard &&
-          imported.componentInstances.some((instance) =>
-            instance.instanceId === selectedBoard &&
-            circuitSpecs.find((spec) => spec.specId === instance.specId)?.category === "board",
+          imported.componentInstances.some(
+            (instance) =>
+              instance.instanceId === selectedBoard &&
+              circuitSpecs.find((spec) => spec.specId === instance.specId)
+                ?.category === "board",
           )
         )
           imported.boardInstanceId = selectedBoard;
@@ -65,6 +67,11 @@ function BlocksPage() {
       ? createWorldExample().robot
       : createExample("avoider").robot;
   });
+  // The motors example and any circuit with both drive motors (such as the
+  // workbench "Evasor de obstáculos" starter) open with the avoider routine.
+  const [presetProgram] = useState(() =>
+    isMotorExample ? createWorldExample().program : presetProgramFor(robot),
+  );
   const [drives, setDrives] = useState<PinDrives>({});
   const circuitRef = useRef({ robot, drives });
   circuitRef.current = { robot, drives };
@@ -121,7 +128,7 @@ function BlocksPage() {
     );
   });
   const [blocks, setBlocks] = useState<ProgramBlock[]>(
-    isMotorExample ? createWorldExample().program : [DEFAULT_WAIT_BLOCK],
+    presetProgram ?? [DEFAULT_WAIT_BLOCK],
   );
   const [outputView, setOutputView] = useState<
     "cpp" | "instructions" | "world"
@@ -161,16 +168,25 @@ function BlocksPage() {
           ].includes(instruction.op),
         )));
   const labels = spanish.blocks;
-  const componentOptions = (matches: (specId: string) => boolean): [string, string][] =>
+  const componentOptions = (
+    matches: (specId: string) => boolean,
+  ): [string, string][] =>
     robot.componentInstances
       .filter((instance) => matches(instance.specId))
-      .map((instance) => [`${instance.specId} · ${instance.instanceId}`, instance.instanceId]);
+      .map((instance) => [
+        `${instance.specId} · ${instance.instanceId}`,
+        instance.instanceId,
+      ]);
   const sensorOptions = componentOptions((specId) => {
-    const kind = circuitSpecs.find((spec) => spec.specId === specId)?.sensorKind;
+    const kind = circuitSpecs.find(
+      (spec) => spec.specId === specId,
+    )?.sensorKind;
     return Boolean(kind && kind !== "ultrasonic");
   });
-  const servoOptions = componentOptions((specId) =>
-    circuitSpecs.find((spec) => spec.specId === specId)?.actuatorKind === "servo",
+  const servoOptions = componentOptions(
+    (specId) =>
+      circuitSpecs.find((spec) => spec.specId === specId)?.actuatorKind ===
+      "servo",
   );
   const hasHardware = instructions.some(
     (instruction) => instruction.op !== "wait",
@@ -201,7 +217,15 @@ function BlocksPage() {
       {!isEmbedded && (
         <header className="app-header">
           <a className="brand" href="./index.html">
-            ROBOKAN<span aria-hidden="true">.</span>
+            <img
+              src={
+                new URL("../../assets/home/brand-logo.png", import.meta.url)
+                  .href
+              }
+              width="200"
+              height="53"
+              alt="ROBOKAN"
+            />
           </a>
           <a className="home-link" href="./index.html">
             {labels.home}
@@ -374,9 +398,7 @@ function BlocksPage() {
             programKey={programKey}
             sensorOptions={sensorOptions}
             servoOptions={servoOptions}
-            initialProgram={
-              isMotorExample ? createWorldExample().program : undefined
-            }
+            initialProgram={presetProgram}
             onClose={() => {
               runner.stop();
               window.parent.postMessage(

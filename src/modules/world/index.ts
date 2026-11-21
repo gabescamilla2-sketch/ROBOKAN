@@ -9,4 +9,5 @@ export type {
   WorldSnapshot,
 } from "./types";
 export { createRobotWorld } from "./create-world";
+export type { WorldMap, WorldObstacle, ObstacleKind } from "./map";
 export { WorldViewport } from "./WorldViewport";
