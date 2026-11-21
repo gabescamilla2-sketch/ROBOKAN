@@ -1,1 +1,17 @@
-{} 
+{
+  "blocks": {
+    "title": "Programar con bloques",
+    "instructions": "Conecta bloques Esperar y cambia su duración. El programa se repite hasta que pulses Detener.",
+    "controls": "Controles del programa",
+    "run": "Ejecutar",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "stop": "Detener",
+    "remaining": "Espera restante",
+    "workspace": "Editor de bloques",
+    "waitMessage": "Esperar %1 segundos",
+    "cpp": "C++ equivalente",
+    "program": "Instrucciones del simulador",
+    "status": { "idle": "Listo", "running": "En ejecución", "paused": "Pausado", "completed": "Completado" }
+  }
+}

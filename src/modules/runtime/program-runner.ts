@@ -10,6 +10,7 @@ export class ProgramRunner {
   private deadlineMs = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private currentStatus: ProgramStatus = "idle";
+  private repeat = false;
 
   get status(): ProgramStatus {
     return this.currentStatus;
@@ -26,7 +27,7 @@ export class ProgramRunner {
     return this.remainingMs;
   }
 
-  run(instructions: readonly WaitInstruction[]): void {
+  run(instructions: readonly WaitInstruction[], options: { repeat?: boolean } = {}): void {
     const program = instructions.map((instruction) => {
       if (instruction.op !== "wait") {
         throw new Error("Unsupported instruction");
@@ -39,6 +40,7 @@ export class ProgramRunner {
 
     this.stop();
     this.instructions = program;
+    this.repeat = options.repeat ?? false;
     this.currentStatus = "running";
     this.startInstruction();
   }
@@ -63,6 +65,7 @@ export class ProgramRunner {
     this.remainingMs = 0;
     this.deadlineMs = 0;
     this.currentStatus = "idle";
+    this.repeat = false;
   }
 
   private startInstruction(): void {
@@ -91,6 +94,9 @@ export class ProgramRunner {
         return;
       }
       this.cursor += 1;
+      if (this.repeat && this.cursor === this.instructions.length) {
+        this.cursor = 0;
+      }
       this.startInstruction();
     }, timeoutMs);
   }

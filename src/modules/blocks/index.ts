@@ -6,3 +6,4 @@ export type { WaitBlock } from "./definitions";
 export { DEFAULT_WAIT_BLOCK } from "./definitions";
 export { generateCpp } from "./generate-cpp";
 export { generateInstructions } from "./generate-instructions";
+export { BlocksEditor } from "./BlocksEditor";

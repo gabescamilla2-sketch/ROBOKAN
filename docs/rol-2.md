@@ -101,4 +101,19 @@ Quedan pendientes la comprobación de tipos con el proyecto configurado y las pr
 
 Compartir este avance con **Rol 3**, porque usa el contrato `Instruction` y comparte la integración del runtime. Informar también a **Rol 4** del contrato al preparar la resolución y validación eléctrica. El cambio a C++ y el reparto acordado deben quedar visibles para el líder. Estos avisos siguen pendientes de envío por parte del usuario.
 
+## Avance de la prueba visual de Esperar
+
+- Se agregó configuración mínima de React, TypeScript, Vite, Blockly y Vitest en `package.json`, `tsconfig.json` y `vite.config.ts`.
+- La página de prueba está en `blocks.html`, con entrada en `src/dev/dev-blocks.tsx`. Se abre en `/blocks.html` después de ejecutar `npm install` y `npm run dev`.
+- `BlocksEditor.tsx` permite arrastrar y conectar bloques Esperar y editar segundos. El programa recorre las cadenas independientes de arriba hacia abajo. Los valores internos usan milisegundos.
+- La pantalla muestra C++ con `setup()` y `loop()`, instrucciones estructuradas, estado y tiempo restante, y conecta Ejecutar, Pausar, Reanudar y Detener. Durante la ejecución y la pausa el editor queda bloqueado para conservar el programa mostrado.
+- `generateInstructions` ahora devuelve el subtipo de instrucciones Esperar, compatible con la firma actual de `ProgramRunner.run`.
+- `run(instructions, { repeat: true })` agrega repetición opcional. La pantalla usa esta opción. Cada espera se agenda con temporizador para ceder el control al navegador. Una lista vacía finaliza de inmediato.
+- Se agregaron pruebas con reloj simulado para pausa, reanudación, repetición, detención, lista vacía y reemplazo de ejecución.
+- Próximo trabajo del Rol 2: integrar las operaciones de hardware con los contratos acordados con Roles 3 y 4 y ampliar los bloques. Sigue pendiente implementar la conservación y restauración de órdenes de motor, y los efectos de Detener sobre actuadores.
+
+La compilación TypeScript/Vite y las 17 pruebas del menú, circuito y runtime pasaron. La comprobación visual quedó bloqueada porque el navegador de herramientas agotó el tiempo de acceso al servidor local. Vite reporta un paquete de Blockly superior a 500 kB. La instalación reportó tres vulnerabilidades de dependencias pendientes de revisar. El build actual se limita a la página de bloques.
+
+README, arquitectura y contrato ya describen C++ e instrucciones TypeScript. El documento de convenciones conserva una sección histórica de Python que requiere coordinación del equipo.
+
 Referencias del proyecto: [Arquitectura](arquitectura.md), [Contrato entre módulos](contrato.md) y [Convenciones de nombres](convenciones-nombres.md). Las referencias a Python en arquitectura y contrato requieren revisión por el cambio de alcance.
