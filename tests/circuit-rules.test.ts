@@ -483,3 +483,27 @@ it("does not traverse a ground reference to find power through an unrelated load
   expect(result.statusByInstance["raspberry-pi-4:1"]).toBe("ok");
   expect(result.violations.some((violation) => violation.ruleId === "overvoltage_gpio")).toBe(false);
 });
+
+
+it.each(["unwired", "referenced_board", "isolated_board"])(
+  "keeps declared pins in defined nets across boards: %s", (mode) => {
+    const pinPairs: [string, string][] = [...poweredSensorWires];
+    if (mode !== "unwired") pinPairs.push([
+      mode === "referenced_board" ? "arduino-uno:1/D9" : "raspberry-pi-4:1/GPIO17",
+      "hc-sr04:1/TRIG",
+    ]);
+    const circuitGraph = testCircuit(["arduino-uno", "hc-sr04", "raspberry-pi-4"], pinPairs);
+    const result = evaluateCircuitRules(circuitGraph, componentSpecs);
+    expect(result.netlistIssues).toEqual([]);
+    for (const componentInstance of circuitGraph.componentInstances) {
+      const componentSpec = componentSpecs.find((spec) => spec.specId === componentInstance.specId)!;
+      for (const pin of componentSpec.pins) {
+        const pinRef = createPinRef(componentInstance.instanceId, pin.pinName);
+        expect(result.nets.filter((net) => net.pinRefs.includes(pinRef))).toHaveLength(1);
+      }
+    }
+    expect(result.violations.some((violation) => violation.ruleId === "missing_common_ground"))
+      .toBe(mode === "isolated_board");
+    expect(result.statusByInstance["hc-sr04:1"]).toBe(mode === "isolated_board" ? "unpowered" : "ok");
+  },
+);
