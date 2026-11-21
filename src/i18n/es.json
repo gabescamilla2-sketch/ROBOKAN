@@ -57,7 +57,7 @@
     "buzzerMessage": "Buzzer %1 %2 frecuencia %3 Hz",
     "on": "Encendido",
     "off": "Apagado",
-    "hardwarePending": "La ejecución de motores, sensores, LED y buzzer requiere la integración con los Roles 3 y 4. Puedes editar el programa y ver sus dos salidas.",
+    "hardwarePending": "Motor y buzzer requieren conectar el adaptador del circuito con la API del mundo 3D. Esperar, LED y distancia de prueba están disponibles en modo circuito. La prueba aislada de distancia admite Leer distancia y Esperar.",
     "cppHelpers": "Las funciones robokan_* son auxiliares educativas propuestas. Su implementación para hardware queda pendiente de acordar los pines y componentes.",
     "controls": "Controles del programa",
     "run": "Ejecutar",
