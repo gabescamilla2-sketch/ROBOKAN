@@ -238,3 +238,34 @@ runner.run(instructions, { repeat: true });
 - `tests/runtime-hardware.test.ts` verifica lecturas, secuencias de hardware, pausa/reanudación de motores, apagado, cancelación y resultados tardíos. Pasaron 70 pruebas en total (5 de menú y 65 de Vitest).
 
 Los apartados anteriores documentan etapas previas. Este contrato confirmado sustituye la propuesta de resultados y la limitación inicial del runtime a Esperar.
+
+## Panel de lecturas y prueba independiente
+
+- `ReadingsPanel.tsx` muestra los últimos valores de `runner.readings` por `resultId` en centímetros y un estado vacío antes de recibir lecturas.
+- La pantalla incluye Probar lecturas de distancia y un campo de valor manual, inicialmente 23.5 cm. Permite ejecutar Leer distancia combinado con Esperar y distingue los valores de prueba.
+- `src/dev/test-distance-adapter.ts` devuelve el valor ingresado, respeta AbortSignal y valida que la distancia sea finita y positiva o cero. La integración real con circuito y mundo sigue pendiente.
+- Para comprobarlo, activar la prueba, agregar Leer distancia con TRIG D9 y ECHO D10, ejecutar y revisar `distance_cm` en el panel. Detener conserva el último resultado y una ejecución nueva limpia las lecturas anteriores.
+- El panel de prueba mantiene bloqueados los actuadores hasta integrar el adaptador real.
+
+## Conexión de desarrollo al circuito 2D
+
+- `blocks.html` incluye ahora `CircuitEditor` y conserva el robot y las señales en un estado compartido con el programa. El circuito se bloquea durante ejecución y pausa.
+- La vista estática `circuits.html` ofrece Programar este circuito en su barra lateral. Transfiere componentes y cables mediante sessionStorage y abre `blocks.html?circuit=1`. La transferencia es una copia al abrir, y los cambios siguientes se hacen en la vista integrada.
+- `src/dev/import-circuit-workbench.ts` adapta los identificadores y nombres de pines de esa vista al contrato canónico y valida el resultado con el deserializador de circuito. Una transferencia incompatible muestra un aviso y abre un circuito vacío.
+- `src/dev/circuit-program-adapter.ts` es un puente de desarrollo. LED escribe señales digitales en los pines de la placa seleccionada y vuelve a evaluar el circuito. Leer distancia busca TRIG y ECHO del mismo HC-SR04 y valida alimentación y errores eléctricos antes de devolver el valor manual de prueba.
+- Los avisos de pines flotantes son informativos en este puente, que valida conexiones y alimentación. La simulación de pulsos y la distancia del entorno requieren el adaptador oficial y el mundo 3D.
+- El ejemplo inicial conecta HC-SR04 a D9/D10 y LED con resistencia a D13. Se puede probar encender LED D13, esperar y apagarlo, o leer el sensor conectado.
+- Motor, buzzer y sensores adicionales siguen pendientes del adaptador de Roles 3 y 4. La casilla Probar lecturas permite la prueba aislada anterior y se identifica en pantalla.
+- Pruebas nuevas cubren lectura con alimentación, rechazo al quitar VCC, escritura LED y transferencia de identificadores de la vista estática.
+
+## Cambio de interacción solicitado por el usuario
+
+La interfaz combinada descrita en el apartado anterior fue retirada. Circuito y programación permanecen en vistas separadas.
+
+- En `circuits.html`, doble clic sobre el cuerpo de un Arduino abre su editor de programación dentro de un panel modal con deslizamiento desde la derecha. Alt+Enter sobre la placa ofrece acceso con teclado.
+- El panel usa `blocks.html` embebido y recibe el circuito y la placa seleccionada. La pantalla de programación muestra bloques, código y lecturas. El circuito permanece en la pantalla principal.
+- Cada Arduino usa una clave propia para Guardar y Recuperar programa.
+- Cerrar o Escape solicita confirmación si hay cambios sin guardar. Al aceptar se detiene el runtime, se anima el cierre y se devuelve el foco a la placa.
+- La animación respeta la preferencia de movimiento reducido. Los mensajes entre panel y pantalla principal comprueban origen y ventana emisora.
+- El botón de navegación que transfería a una pantalla combinada fue eliminado. El nuevo punto de entrada es el Arduino.
+- La conexión eléctrica de desarrollo sigue disponible internamente. Distancia manual y adaptador oficial de mundo conservan los pendientes ya documentados.

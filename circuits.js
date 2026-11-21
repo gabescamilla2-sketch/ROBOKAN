@@ -30,6 +30,7 @@ const future = [];
 const storageKey = 'robokan.circuit-editor.v1';
 let sequence = Date.now();
 
+
 const icon = id => `<svg aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const escapeText = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const status = message => { $('#status-message').textContent = message; };
@@ -118,7 +119,7 @@ function cablePath(wire,index) {
 function renderComponents() {
   $('#components-layer').innerHTML=state.components.map(component => {
     const model=componentTypes[component.type];
-    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover."><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g><text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
+    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${component.type === 'uno' ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g><text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
   }).join('');
   $('#pins-layer').innerHTML=state.components.map(component => componentTypes[component.type].pins.map(pin => {
     const endpoint={component:component.id,pin:pin.name};
@@ -212,6 +213,46 @@ function canvasPoint(event) {
   return new DOMPoint(event.clientX,event.clientY).matrixTransform(canvas.getScreenCTM().inverse());
 }
 
+const programPanel = $('#program-panel');
+const programFrame = $('#program-frame');
+let lastBoardClick = null;
+let programReturnFocus = null;
+let programCloseTimer = null;
+
+function openBoardProgram(component) {
+  if (programPanel.open || component.type !== 'uno') return;
+  try { sessionStorage.setItem('robokan.program.circuit-transfer', snapshot()); }
+  catch { status('No se pudo abrir el programa. Comprueba el almacenamiento del navegador.'); return; }
+  const componentIndex = state.components.findIndex(candidate => candidate.id === component.id);
+  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: 'arduino-uno:' + (componentIndex + 1), programKey: component.id });
+  programReturnFocus = component.id;
+  $('#program-board-name').textContent = componentTypes[component.type].name + ' · ' + component.id;
+  programFrame.src = 'blocks.html?' + params.toString();
+  programPanel.showModal();
+  requestAnimationFrame(() => { if (programPanel.open) programPanel.classList.add('is-open'); });
+}
+function requestProgramClose() {
+  programFrame.contentWindow?.postMessage({ type: 'robokan:request-close' }, location.origin);
+}
+$('#close-program-panel').addEventListener('click', requestProgramClose);
+programPanel.addEventListener('cancel', event => { event.preventDefault(); requestProgramClose(); });
+window.addEventListener('message', event => {
+  if (event.origin !== location.origin || event.source !== programFrame.contentWindow || event.data?.type !== 'robokan:close-allowed' || !programPanel.open) return;
+  programPanel.classList.remove('is-open');
+  clearTimeout(programCloseTimer);
+  programCloseTimer = setTimeout(() => {
+    programPanel.close();
+    programFrame.removeAttribute('src');
+    [...canvas.querySelectorAll('[data-component]')].find(element => element.dataset.component === programReturnFocus)?.focus();
+  }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240);
+});
+canvas.addEventListener('dblclick', event => {
+  if (event.target.closest('[data-pin]')) return;
+  const element = event.target.closest('[data-component]');
+  const component = state.components.find(candidate => candidate.id === element?.dataset.component);
+  if (component?.type === 'uno') { event.preventDefault(); openBoardProgram(component); }
+});
+
 canvas.addEventListener('pointerdown',event=>{
   if (event.button!==0) return;
   const pin=event.target.closest('[data-pin]');
@@ -292,6 +333,10 @@ canvas.addEventListener('keydown',event=>{
     }
     else if (wire) selectWire(wire.dataset.wire);
     else if (componentElement) { selection={kind:'component',id:componentElement.dataset.component}; render(); canvas.querySelector(`[data-component="${selection.id}"]`)?.focus(); }
+  }
+  if (componentElement && event.key === 'Enter' && event.altKey) {
+    const component = state.components.find(candidate => candidate.id === componentElement.dataset.component);
+    if (component?.type === 'uno') { event.preventDefault(); openBoardProgram(component); }
   }
   if (componentElement && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) {
     event.preventDefault();

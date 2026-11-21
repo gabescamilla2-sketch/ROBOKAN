@@ -1,6 +1,15 @@
 {
   "blocks": {
     "title": "Programar con bloques",
+    "circuitTransferError": "No se pudo cargar el circuito de la vista anterior. Revisa los componentes y conexiones o recupera un circuito guardado compatible.",
+    "distanceSource": "La lectura requiere un HC-SR04 alimentado y conectado en el circuito. La distancia proviene de este valor de prueba hasta integrar el mundo 3D.",
+    "readingsTitle": "Lecturas del programa",
+    "readingsNotice": "Último valor recibido por cada variable de distancia.",
+    "testReadingsNotice": "Valores de prueba ingresados manualmente para la última ejecución. Unidad en centímetros.",
+    "noReadings": "Las lecturas aparecerán al ejecutar un bloque Leer distancia.",
+    "testMode": "Probar lecturas de distancia",
+    "testModeHint": "Agrega Leer distancia con TRIG y ECHO distintos. Puedes combinarlo con Esperar. Este modo devuelve la distancia ingresada.",
+    "testDistance": "Distancia de prueba",
     "unsavedChanges": "Cambios sin guardar",
     "noPendingChanges": "Sin cambios pendientes",
     "confirmReplace": "Tienes cambios sin guardar. ¿Quieres descartarlos y reemplazar el programa?",

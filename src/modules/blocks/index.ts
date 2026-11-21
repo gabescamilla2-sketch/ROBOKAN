@@ -7,4 +7,5 @@ export { DEFAULT_WAIT_BLOCK } from "./definitions";
 export { generateCpp, generateCppProgram } from "./generate-cpp";
 export { generateInstructions } from "./generate-instructions";
 export { BlocksEditor } from "./BlocksEditor";
+export { ReadingsPanel } from "./ReadingsPanel";
 export { validateProgram } from "./validate-program";

@@ -64,3 +64,14 @@ code { font-family: Consolas, "Courier New", monospace; }
 @media (max-width: 1000px) { .execution-bar { align-items: flex-start; flex-direction: column; } .editor-layout { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); } }
 @media (max-width: 760px) { .blocks-app { padding: 0 14px 20px; } .app-header { min-height: 66px; } .page-heading { align-items: flex-start; flex-direction: column; gap: 10px; } .editor-layout { grid-template-columns: 1fr; } .panel-heading > span { display: none; } .execution-status { flex-wrap: wrap; gap: 12px; } .block-workspace { height: 440px; } }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+.output-column { display: grid; gap: 20px; min-width: 0; }
+.readings-panel, .sensor-test-panel { border: 1px solid #dce4ef; border-radius: 16px; background: white; overflow: hidden; }
+.sensor-test-panel { padding: 18px 20px; font-size: 13px; }
+.sensor-test-panel p { color: #52627a; line-height: 1.6; }
+.sensor-test-panel input[type="number"] { width: 100px; border: 1px solid #bdcce0; border-radius: 6px; padding: 8px; font: inherit; }
+.readings-list { margin: 0; padding: 0 20px 20px; }
+.readings-list > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid #e7edf5; }
+.readings-list dt { font-family: Consolas, monospace; overflow-wrap: anywhere; }
+.readings-list dd { margin: 0; font-weight: 700; white-space: nowrap; }
+.readings-list dd span { font-weight: 400; color: #52627a; }
+.blocks-app.is-embedded { padding-top: 0; }

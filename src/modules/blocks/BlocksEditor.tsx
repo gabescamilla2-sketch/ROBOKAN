@@ -14,9 +14,11 @@ export interface BlocksEditorProps {
   isReadOnly: boolean;
   onChange: (blocks: ProgramBlock[]) => void;
   activeInstructionIndex?: number;
+  programKey?: string;
+  onClose?: () => void;
 }
 
-export function BlocksEditor({ isReadOnly, onChange, activeInstructionIndex }: BlocksEditorProps) {
+export function BlocksEditor({ isReadOnly, onChange, activeInstructionIndex, programKey = "default", onClose }: BlocksEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const orderedBlockIdsRef = useRef<string[]>([]);
@@ -36,7 +38,9 @@ export function BlocksEditor({ isReadOnly, onChange, activeInstructionIndex }: B
     setHasUnsavedChanges(false);
   };
   const confirmReplacement = () => savedSnapshotRef.current === null || snapshot() === savedSnapshotRef.current || window.confirm(labels.confirmReplace);
-  const storageKey = "robokan.blocks.workspace.v1";
+  const storageKey = programKey === "default" ? "robokan.blocks.workspace.v1" : `robokan.blocks.workspace.v1.${programKey}`;
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const loadProgram = (source: string) => {
     const workspace = workspaceRef.current;
     if (!workspace) return;
@@ -182,11 +186,24 @@ export function BlocksEditor({ isReadOnly, onChange, activeInstructionIndex }: B
       }
     };
     window.addEventListener("beforeunload", warnBeforeLeaving);
+    const requestClose = (event: MessageEvent) => {
+      if (event.origin !== location.origin || event.source !== window.parent || event.data?.type !== "robokan:request-close") return;
+      if (confirmReplacement()) closeRef.current?.();
+    };
+    window.addEventListener("message", requestClose);
+    const escapePanel = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.querySelector(".blocklyWidgetDiv:not([style*='display: none']) input")) {
+        if (confirmReplacement()) closeRef.current?.();
+      }
+    };
+    window.addEventListener("keydown", escapePanel);
     const observer = new ResizeObserver(() => Blockly.svgResize(workspace));
     observer.observe(containerRef.current);
     return () => {
       observer.disconnect();
       window.removeEventListener("beforeunload", warnBeforeLeaving);
+      window.removeEventListener("message", requestClose);
+      window.removeEventListener("keydown", escapePanel);
       workspace.dispose();
       workspaceRef.current = null;
     };
