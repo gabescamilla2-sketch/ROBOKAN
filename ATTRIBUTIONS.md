@@ -2,6 +2,22 @@
 
 | Archivo | Origen (URL) | Autor | Licencia | Modificado |
 |---|---|---|---|---|
+| arduino_uno.glb | https://skfb.ly/6RUK6 | kakeka |  licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB |
+| l298n.glb | https://skfb.ly/oyCXE | peddintiudaykiran176 | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB |
+| led.glb | | https://skfb.ly/6uZPp | Jiří Kuba | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB | 
+| motor.glb | https://skfb.ly/oHzq6| peddintiudaykiran176 | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB |
+| protoboard.glb | https://skfb.ly/6xtq7 | Matys | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB |
+| raspberry.glb | https://skfb.ly/osAEQ | Pavluha | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB |
+| sensor_temperatura_lm35.glb | https://skfb.ly/oXpG7 | Robótica Paraná | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB |
+| ultrasonico.glb | https://skfb.ly/oxVFS | peddintiudaykiran176 | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, nodos de pines, exportado a GLB |
+| bateria.glb | https://skfb.ly/pHpDs | 3dArenaRaj | licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/) | Escala ajustada, Cambio de diseño, Marcadores sobre conectores añadidos | 
+
+# Modelos propios
+
+| Archivo | Origen (URL) | Autor | Licencia | Modificado |
+|---|---|---|---|---|
+| chasis.glb | Original, creado para este proyecto | RoboKan | CC0 | No aplica |
+| wheel.glb | Original, creado para este proyecto | RoboKan | CC0 | No aplica |
 
 ## Recursos del prototipo de portada
 
