@@ -1,4 +1,7 @@
 import { componentTypes, artwork } from './circuits-art.js';
+import { importCircuitWorkbench } from './src/dev/import-circuit-workbench.ts';
+import { circuitSpecs } from './src/dev/circuit-fixtures.ts';
+import { evaluate } from './src/modules/circuit/api.ts';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#circuit-canvas');
@@ -26,6 +29,7 @@ const viewCenter = {x:550,y:375};
 let drag = null;
 let simulationRunning = false;
 let savedSnapshot = null;
+let scaleEditBefore = null;
 const history = [];
 const future = [];
 const storageKey = 'robokan.circuit-editor.v1';
@@ -41,7 +45,8 @@ function validateProject(value) {
   if (!value || !Array.isArray(value.components) || !Array.isArray(value.wires) || value.components.length > 60 || value.wires.length > 200) return false;
   const ids = new Set();
   for (const component of value.components) {
-    if (!component || typeof component.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(component.id) || ids.has(component.id) || !Object.hasOwn(componentTypes, component.type) || !Number.isFinite(component.x) || !Number.isFinite(component.y) || component.x < 0 || component.y < 0 || component.x > 1100-componentTypes[component.type].width || component.y > 750-componentTypes[component.type].height-35) return false;
+    const scale = component?.scale ?? 1;
+    if (!component || typeof component.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(component.id) || ids.has(component.id) || !Object.hasOwn(componentTypes, component.type) || !Number.isFinite(component.x) || !Number.isFinite(component.y) || !Number.isFinite(scale) || scale < 0.5 || scale > 1.5 || component.x < 0 || component.y < 0 || component.x > 1100-componentTypes[component.type].width*scale || component.y > 750-componentTypes[component.type].height*scale-35) return false;
     ids.add(component.id);
   }
   const wireIds = new Set();
@@ -62,6 +67,11 @@ try {
   const saved = localStorage.getItem(storageKey);
   if (saved) {
     const parsed = JSON.parse(saved);
+    for(const wire of parsed.wires??[]) for(const endpoint of [wire.from,wire.to]) {
+      const component=parsed.components?.find(item=>item.id===endpoint.component);
+      if(component?.type==='led') endpoint.pin={'Ánodo (+)':'ANODE','Cátodo (−)':'CATHODE'}[endpoint.pin]??endpoint.pin;
+      if(component?.type==='resistor') endpoint.pin={'1':'PIN_A','2':'PIN_B'}[endpoint.pin]??endpoint.pin;
+    }
     if (validateProject(parsed)) { state = parsed; savedSnapshot = snapshot(); status('Proyecto recuperado de este navegador'); }
     else status('El proyecto guardado no es compatible. Se abrió el circuito de inicio.');
   }
@@ -86,7 +96,8 @@ function point(endpoint) {
   const component = state.components.find(item => item.id === endpoint.component);
   const model = componentTypes[component.type];
   const pin = model.pins.find(item => item.name === endpoint.pin);
-  return {x:component.x+pin.x,y:component.y+pin.y,direction:pin.y < model.height/2 ? -1 : 1,component,model};
+  const scale=component.scale??1;
+  return {x:component.x+pin.x*scale,y:component.y+pin.y*scale,direction:pin.y < model.height/2 ? -1 : 1,component,model};
 }
 
 function samePin(first, second) { return first.component === second.component && first.pin === second.pin; }
@@ -119,24 +130,26 @@ function cableBends(wire,index) {
   const endY=b.y+b.direction*(36+lane*13);
   const left=a.component.x < b.component.x ? a : b;
   const right=left===a ? b : a;
-  let middle=(left.component.x+left.model.width+right.component.x)/2+lane*12-18;
-  if (a.component.id===b.component.id) middle=a.component.x+a.model.width+35+lane*12;
+  let middle=(left.component.x+left.model.width*(left.component.scale??1)+right.component.x)/2+lane*12-18;
+  if (a.component.id===b.component.id) middle=a.component.x+a.model.width*(a.component.scale??1)+35+lane*12;
   return [{x:a.x,y:startY},{x:middle,y:startY},{x:middle,y:endY},{x:b.x,y:endY}];
 }
 
 function renderComponents() {
   $('#components-layer').innerHTML=state.components.map(component => {
     const model=componentTypes[component.type];
-    const canonicalType = { uno:'arduino-uno', ultrasonic:'hc-sr04', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard', motor:'dc-motor', buzzer:'buzzer' }[component.type];
+    const canonicalType = { uno:'arduino-uno', pi:'raspberry-pi-4', ultrasonic:'hc-sr04', flame:'flame-sensor', gas:'mq2-gas-sensor', infrared:'ir-line-sensor', lm35:'lm35', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard', motor:'dc-motor', buzzer:'buzzer', l298n:'motor-driver-l298n', battery:'battery-9v' }[component.type];
     const canonicalId = canonicalType + ':' + /-([1-9]\d*)$/.exec(component.id)?.[1];
     const electricalStatus = programComponentStates[canonicalId];
     const ledOn = component.type === 'led' && electricalStatus === 'ok';
-    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${component.type === 'uno' ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g>${ledOn ? `<ellipse class="program-led-glow" cx="45" cy="36" rx="28" ry="30" fill="#F16C75" opacity=".65" pointer-events="none"/>` : ''}${electricalStatus ? `<text class="component-program-status" x="0" y="${model.height+25}">${electricalStatus === 'ok' ? 'Activo' : electricalStatus === 'burned' ? 'Fallo eléctrico' : 'Sin alimentación'}</text>` : ''}<text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
+    const scale=component.scale??1;
+    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y}) scale(${scale})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${['uno','pi'].includes(component.type) ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g>${ledOn ? `<ellipse class="program-led-glow" cx="45" cy="36" rx="28" ry="30" fill="#F16C75" opacity=".65" pointer-events="none"/>` : ''}${electricalStatus ? `<text class="component-program-status" x="0" y="${model.height+25}">${electricalStatus === 'ok' ? 'Activo' : electricalStatus === 'burned' ? 'Fallo eléctrico' : 'Sin alimentación'}</text>` : ''}<text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
   }).join('');
   $('#pins-layer').innerHTML=state.components.map(component => componentTypes[component.type].pins.map(pin => {
     const endpoint={component:component.id,pin:pin.name};
     const name=escapeText(pin.name);
-    return `<g transform="translate(${component.x+pin.x} ${component.y+pin.y})"><circle class="pin-center" r="1.6"/><circle class="pin${pending && samePin(pending,endpoint)?' pending':''}" r="${component.type==='breadboard'?4:6}" data-pin="${name}" data-owner="${component.id}" role="button" tabindex="${component.type==='breadboard'&&pin.name!=='a1'?'-1':'0'}" aria-label="${componentTypes[component.type].name}: pin ${name}${component.type==='breadboard'?'. Usa las flechas para navegar.':''}"><title>${name}</title></circle></g>`;
+    const scale=component.scale??1;
+    return `<g transform="translate(${component.x+pin.x*scale} ${component.y+pin.y*scale})"><circle class="pin-center" r="1.6"/><circle class="pin${pending && samePin(pending,endpoint)?' pending':''}" r="${component.type==='breadboard'?4:6}" data-pin="${name}" data-owner="${component.id}" role="button" tabindex="${component.type==='breadboard'&&pin.name!=='a1'?'-1':'0'}" aria-label="${componentTypes[component.type].name}: pin ${name}${component.type==='breadboard'?'. Usa las flechas para navegar.':''}"><title>${name}</title></circle></g>`;
   }).join('')).join('')+state.wires.map((wire,index)=>{
     const ends=['from','to'].map(end=>{const p=point(wire[end]),active=selection?.kind==='wire'&&selection.id===wire.id;return `<circle class="wire-end-handle" cx="${p.x}" cy="${p.y}" r="16" fill="transparent" stroke="${active?wire.color:'transparent'}" stroke-width="2" style="cursor:grab" data-wire-end="${end}" data-wire-id="${wire.id}" aria-label="Arrastrar extremo del cable ${escapeText(wire[end].pin)}"/>`;}).join('');
     if(selection?.kind!=='wire'||selection.id!==wire.id)return ends;
@@ -156,7 +169,7 @@ function renderWires() {
 function renderInspector() {
   const component=selection?.kind==='component' ? state.components.find(item=>item.id===selection.id) : null;
   $('#selection-heading').textContent=component ? componentTypes[component.type].name : 'Conexiones';
-  $('#selection-details').textContent=component ? `${componentTypes[component.type].model} · ${componentTypes[component.type].pins.length} pines. Arrastra para mover o usa las flechas del teclado.` : '';
+  $('#selection-details').innerHTML=component ? `<p>${escapeText(componentTypes[component.type].model)} · ${componentTypes[component.type].pins.length} pines. Arrastra para mover o usa las flechas.</p><label class="component-scale-control" for="component-scale">Tamaño <output id="component-scale-value">${Math.round((component.scale??1)*100)}%</output><input id="component-scale" type="range" min="0.5" max="1.5" step="0.05" value="${component.scale??1}" aria-label="Tamaño de ${escapeText(componentTypes[component.type].name)}"></label>` : '';
   $('#wire-count').textContent=state.wires.length;
   const wires=component ? state.wires.filter(wire=>wire.from.component===component.id || wire.to.component===component.id) : state.wires;
   $('#connection-list').innerHTML=wires.length ? wires.map(wire=>`<button class="connection-row${selection?.id===wire.id?' selected':''}" data-wire="${wire.id}" type="button" style="--wire:${wire.color}" aria-label="Seleccionar cable ${escapeText(wire.from.pin)} a ${escapeText(wire.to.pin)}"><span class="wire-line"></span><span class="endpoint">${escapeText(wire.from.pin.replace(/^GND\d$/, 'GND'))}</span>${icon('chevron')}<span class="endpoint">${escapeText(wire.to.pin)}</span></button>`).join('') : '<p class="field-hint">Sin conexiones. Selecciona dos pines para añadir un cable.</p>';
@@ -171,6 +184,25 @@ function render() {
   $('#component-count').textContent=`${state.components.length} componentes`;
   $('#wire-preview').setAttribute('d','');
 }
+
+$('#selection-details').addEventListener('pointerdown',event=>{
+  if(event.target.closest('#component-scale')&&!scaleEditBefore) scaleEditBefore=snapshot();
+});
+$('#selection-details').addEventListener('input',event=>{
+  if(event.target.id!=='component-scale'||selection?.kind!=='component')return;
+  if(!scaleEditBefore)scaleEditBefore=snapshot();
+  const component=state.components.find(item=>item.id===selection.id);
+  if(!component)return;
+  component.scale=Number(event.target.value);
+  component.x=Math.min(component.x,1100-componentTypes[component.type].width*component.scale);
+  component.y=Math.min(component.y,715-componentTypes[component.type].height*component.scale);
+  $('#component-scale-value').value=`${Math.round(component.scale*100)}%`;
+  renderComponents();renderWires();updateHistory();
+});
+$('#selection-details').addEventListener('change',event=>{
+  if(event.target.id!=='component-scale'||!scaleEditBefore)return;
+  commit(scaleEditBefore);scaleEditBefore=null;updateHistory();status('Tamaño del componente actualizado.');
+});
 
 function renderLibrary() {
   const query=$('#component-search').value.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -239,12 +271,13 @@ let programReturnFocus = null;
 let programCloseTimer = null;
 
 function openBoardProgram(component, withWorld = false) {
-  if (programPanel.open || component.type !== 'uno') return;
+  if (programPanel.open || !['uno','pi'].includes(component.type)) return;
   try { sessionStorage.setItem('robokan.program.circuit-transfer', snapshot()); }
   catch { status('No se pudo abrir el programa. Comprueba el almacenamiento del navegador.'); return; }
   const componentNumber = /-([1-9]\d*)$/.exec(component.id)?.[1];
   if (!componentNumber) { status('La placa tiene un identificador incompatible.'); return; }
-  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: 'arduino-uno:' + componentNumber, programKey: component.id });
+  const boardSpec = component.type === 'pi' ? 'raspberry-pi-4' : 'arduino-uno';
+  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: boardSpec + ':' + componentNumber, programKey: component.id });
   if (withWorld) params.set('world', '1');
   programReturnFocus = component.id;
   $('#program-board-name').textContent = componentTypes[component.type].name + ' · ' + component.id;
@@ -257,8 +290,9 @@ function requestProgramClose() {
 }
 $('#close-program-panel').addEventListener('click', requestProgramClose);
 $('#open-world').addEventListener('click', () => {
-  const board = state.components.find(component => component.id === selection?.id && component.type === 'uno') ?? state.components.find(component => component.type === 'uno');
-  if (!board) { status('Añade un Arduino para abrir el mundo 3D.'); return; }
+  const isBoard=component=>['uno','pi'].includes(component.type);
+  const board = state.components.find(component => component.id === selection?.id && isBoard(component)) ?? state.components.find(isBoard);
+  if (!board) { status('Añade una placa para abrir el mundo 3D.'); return; }
   openBoardProgram(board, true);
 });
 programPanel.addEventListener('cancel', event => { event.preventDefault(); requestProgramClose(); });
@@ -284,7 +318,7 @@ canvas.addEventListener('dblclick', event => {
   if (event.target.closest('[data-pin]')) return;
   const element = event.target.closest('[data-component]');
   const component = state.components.find(candidate => candidate.id === element?.dataset.component);
-  if (component?.type === 'uno') { event.preventDefault(); openBoardProgram(component); }
+  if (component&&['uno','pi'].includes(component.type)) { event.preventDefault(); openBoardProgram(component); }
 });
 
 canvas.addEventListener('pointerdown',event=>{
@@ -326,10 +360,10 @@ canvas.addEventListener('pointerdown',event=>{
     event.preventDefault(); pending=null; selection={kind:'component',id:element.dataset.component};
     const component=state.components.find(item=>item.id===selection.id);
     const now = performance.now();
-    if (component.type === 'uno' && lastBoardClick?.id === component.id && now - lastBoardClick.time < 450 && Math.hypot(event.clientX - lastBoardClick.x, event.clientY - lastBoardClick.y) < 8) {
+    if (['uno','pi'].includes(component.type) && lastBoardClick?.id === component.id && now - lastBoardClick.time < 450 && Math.hypot(event.clientX - lastBoardClick.x, event.clientY - lastBoardClick.y) < 8) {
       lastBoardClick = null; drag = null; openBoardProgram(component); return;
     }
-    lastBoardClick = component.type === 'uno' ? { id: component.id, time: now, x: event.clientX, y: event.clientY } : null;
+    lastBoardClick = ['uno','pi'].includes(component.type) ? { id: component.id, time: now, x: event.clientX, y: event.clientY } : null;
     const position=canvasPoint(event);
     drag={id:component.id,pointer:event.pointerId,startX:position.x,startY:position.y,x:component.x,y:component.y,before:snapshot(),moved:false};
     canvas.setPointerCapture(event.pointerId);
@@ -449,7 +483,7 @@ canvas.addEventListener('keydown',event=>{
   }
   if (componentElement && event.key === 'Enter' && event.altKey) {
     const component = state.components.find(candidate => candidate.id === componentElement.dataset.component);
-    if (component?.type === 'uno') { event.preventDefault(); openBoardProgram(component); }
+    if (['uno','pi'].includes(component?.type)) { event.preventDefault(); openBoardProgram(component); }
   }
   if (componentElement && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) {
     event.preventDefault();
@@ -513,36 +547,18 @@ $('#save-project').addEventListener('click',()=>{
 });
 
 function evaluateCircuit() {
-  const parent=new Map();
-  const key=endpoint=>`${endpoint.component}:${endpoint.pin}`;
-  const find=value=>{if(!parent.has(value))parent.set(value,value);if(parent.get(value)!==value)parent.set(value,find(parent.get(value)));return parent.get(value);};
-  const join=(a,b)=>{const x=find(a),y=find(b);if(x!==y)parent.set(x,y);};
-  state.components.forEach(component=>componentTypes[component.type].pins.forEach(pin=>find(`${component.id}:${pin.name}`)));
-  state.wires.forEach(wire=>join(key(wire.from),key(wire.to)));
-  // Un protoboard une cada grupo a-e/f-j de la misma columna; las columnas quedan aisladas.
-  for (const board of state.components.filter(item=>item.type==='breadboard')) {
-    for (let col=1;col<=24;col++) {
-      for (const rows of ['abcde','fghij']) for(let i=1;i<rows.length;i++) join(`${board.id}:${rows[0]}${col}`,`${board.id}:${rows[i]}${col}`);
-    }
+  try {
+    const graph=importCircuitWorkbench(snapshot());
+    const result=evaluate(graph,circuitSpecs);
+    const issues=result.violations
+      .filter(violation=>violation.ruleId!=='floating_pin')
+      .map(violation=>`${violation.instanceId}: ${violation.ruleId}`);
+    for(const [instanceId,status] of Object.entries(result.statusByInstance))
+      if(status==='unpowered'&&!issues.some(issue=>issue.startsWith(`${instanceId}:`))) issues.push(`${instanceId}: sin alimentación.`);
+    return issues;
+  } catch (error) {
+    return [`No se pudo evaluar el circuito: ${error instanceof Error ? error.message : String(error)}`];
   }
-  const net=(component,pin)=>find(`${component}:${pin}`);
-  const issues=[];
-  for (const board of state.components.filter(item=>item.type==='uno')) {
-    const positives=['5V','3V3','VIN'].filter(pin=>componentTypes.uno.pins.some(item=>item.name===pin));
-    const grounds=['GND1','GND2'].filter(pin=>componentTypes.uno.pins.some(item=>item.name===pin));
-    for(const positive of positives) for(const ground of grounds) if(net(board.id,positive)===net(board.id,ground)) issues.push('Cortocircuito: alimentación y GND están en la misma conexión.');
-  }
-  const powered=(component,powerPin,groundPin)=>state.components.some(board=>board.type==='uno'&&net(component.id,powerPin)===net(board.id,'5V')&&net(component.id,groundPin)===net(board.id,'GND1'));
-  for(const sensor of state.components.filter(item=>item.type==='ultrasonic')) {
-    if(!powered(sensor,'VCC','GND')) issues.push(`HC-SR04 (${sensor.id}): revisa su alimentación VCC y GND común.`);
-    else if(!state.wires.some(w=>[w.from,w.to].some(end=>end.component===sensor.id&&end.pin==='TRIG'))||!state.wires.some(w=>[w.from,w.to].some(end=>end.component===sensor.id&&end.pin==='ECHO'))) issues.push(`HC-SR04 (${sensor.id}): conecta TRIG y ECHO a pines de la placa.`);
-  }
-  for(const led of state.components.filter(item=>item.type==='led')) {
-    const anode=net(led.id,'Ánodo (+)'),cathode=net(led.id,'Cátodo (−)');
-    const energized=state.components.some(board=>board.type==='uno'&&((anode===net(board.id,'5V')&&cathode===net(board.id,'GND1'))||(cathode===net(board.id,'5V')&&anode===net(board.id,'GND1'))));
-    if(energized) issues.push(`LED (${led.id}): puede quemarse; coloca una resistencia en serie.`);
-  }
-  return issues;
 }
 
 $('#run-circuit').addEventListener('click',()=>{

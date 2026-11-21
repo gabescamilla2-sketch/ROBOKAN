@@ -21,6 +21,7 @@ export interface CircuitWorldApi {
     flameIntensityNorm(instanceId: string): number | Promise<number>;
     gasLevelNorm(instanceId: string): number | Promise<number>;
     groundReflectanceNorm(instanceId: string): number | Promise<number>;
+    temperatureC?(instanceId: string): number | Promise<number>;
   };
   applyActuator(command: WorldActuatorCommand): void | Promise<void>;
 }
@@ -104,6 +105,18 @@ export function createExecuteHardwareInstruction(
     const specById = new Map(specs.map((spec) => [spec.specId, spec]));
     const netFor = (pinRef: string) =>
       circuitState.nets.find((net) => net.pinRefs.includes(pinRef));
+    const boardPinConnected = (
+      pinRef: string,
+      accepts: (pinType: string) => boolean,
+    ) =>
+      netFor(pinRef)?.pinRefs.some((ref) => {
+        const slash = ref.lastIndexOf("/");
+        if (ref.slice(0, slash) !== boardInstanceId) return false;
+        const boardPin = boardSpec.pins.find(
+          (pin) => pin.pinName === ref.slice(slash + 1),
+        );
+        return !!boardPin && accepts(boardPin.pinType);
+      }) ?? false;
     const resistorEdges = new Map<string, Set<string>>();
     const joinResistorNets = (a: string | undefined, b: string | undefined) => {
       if (!a || !b || a === b) return;
@@ -188,6 +201,44 @@ export function createExecuteHardwareInstruction(
       aborted(signal);
       if (!Number.isFinite(reading) || reading < 0)
         throw new Error("World returned an invalid distance in centimeters");
+      return { kind: "reading", resultId: instruction.resultId, reading };
+    }
+
+    if (instruction.op === "sensor_read") {
+      const instance = componentById.get(instruction.instanceId);
+      const sensorSpec = instance && specById.get(instance.specId);
+      if (!sensorSpec?.sensorKind || sensorSpec.sensorKind === "ultrasonic")
+        return {
+          kind: "electrical_error",
+          violations: [rule(RULE_IDS.floatingPin, instruction.instanceId)],
+        };
+      if (!powered(instruction.instanceId))
+        return rejectUnpowered(instruction.instanceId);
+      const output = sensorSpec.pins.find((pin) =>
+        ["analog_in", "digital_out"].includes(pin.pinType),
+      );
+      const outputRef = output && createPinRef(instruction.instanceId, output.pinName);
+      if (!outputRef || !boardPinConnected(outputRef, (type) =>
+        ["digital_io", "digital_in", "analog_in", "pwm_out"].includes(type),
+      ))
+        return {
+          kind: "electrical_error",
+          violations: [rule(RULE_IDS.floatingPin, instruction.instanceId, outputRef)],
+        };
+      aborted(signal);
+      const query = dependencies.world.query;
+      const reading = sensorSpec.sensorKind === "flame"
+        ? await query.flameIntensityNorm(instruction.instanceId)
+        : sensorSpec.sensorKind === "gas"
+          ? await query.gasLevelNorm(instruction.instanceId)
+          : sensorSpec.sensorKind === "infrared"
+            ? await query.groundReflectanceNorm(instruction.instanceId)
+            : query.temperatureC
+              ? await query.temperatureC(instruction.instanceId)
+              : Number.NaN;
+      aborted(signal);
+      if (!Number.isFinite(reading))
+        throw new Error("World returned an invalid sensor reading");
       return { kind: "reading", resultId: instruction.resultId, reading };
     }
 
@@ -300,6 +351,32 @@ export function createExecuteHardwareInstruction(
         actuatorKind: "buzzer",
         isOn: instruction.isOn,
         frequencyHz: instruction.frequencyHz,
+      });
+      return { kind: "completed" };
+    }
+
+    if (instruction.op === "servo_write") {
+      const instance = componentById.get(instruction.instanceId);
+      if (specById.get(instance?.specId ?? "")?.actuatorKind !== "servo")
+        return {
+          kind: "electrical_error",
+          violations: [rule(RULE_IDS.floatingPin, instruction.instanceId)],
+        };
+      if (!powered(instruction.instanceId))
+        return rejectUnpowered(instruction.instanceId);
+      const signalRef = createPinRef(instruction.instanceId, "SIGNAL");
+      if (!boardPinConnected(signalRef, (type) =>
+        ["digital_io", "pwm_out"].includes(type),
+      ))
+        return {
+          kind: "electrical_error",
+          violations: [rule(RULE_IDS.floatingPin, instruction.instanceId, signalRef)],
+        };
+      aborted(signal);
+      await dependencies.world.applyActuator({
+        instanceId: instruction.instanceId,
+        actuatorKind: "servo",
+        angleDeg: Math.max(0, Math.min(180, instruction.angleDeg)),
       });
       return { kind: "completed" };
     }

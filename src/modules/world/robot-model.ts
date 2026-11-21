@@ -114,6 +114,9 @@ export async function createRobotModel(
         instance.specId as ComponentModelId,
         instance.instanceId,
       );
+      const userScale = instance.scale ?? 1;
+      model.root.scaling.scaleInPlace(userScale);
+      model.size.scaleInPlace(userScale);
       components.set(instance.instanceId, model);
       const index = counts.get(instance.specId) ?? 0;
       counts.set(instance.specId, index + 1);

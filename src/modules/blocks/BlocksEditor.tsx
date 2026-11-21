@@ -21,6 +21,8 @@ export interface BlocksEditorProps {
   programKey?: string;
   onClose?: () => void;
   initialProgram?: readonly ProgramBlock[];
+  sensorOptions?: [string, string][];
+  servoOptions?: [string, string][];
 }
 
 export function BlocksEditor({
@@ -30,6 +32,8 @@ export function BlocksEditor({
   programKey = "default",
   onClose,
   initialProgram,
+  sensorOptions = [],
+  servoOptions = [],
 }: BlocksEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -208,18 +212,18 @@ export function BlocksEditor({
             {
               type: "field_dropdown",
               name: "TRIG",
-              options: Array.from({ length: 14 }, (_, index) => [
+              options: [...Array.from({ length: 14 }, (_, index) => [
                 `D${index}`,
                 `D${index}`,
-              ]),
+              ]), ...[17, 22, 23, 24, 27].map((pin) => [`GPIO${pin}`, `GPIO${pin}`])],
             },
             {
               type: "field_dropdown",
               name: "ECHO",
-              options: Array.from({ length: 14 }, (_, index) => [
+              options: [...Array.from({ length: 14 }, (_, index) => [
                 `D${index}`,
                 `D${index}`,
-              ]),
+              ]), ...[17, 22, 23, 24, 27].map((pin) => [`GPIO${pin}`, `GPIO${pin}`])],
             },
             {
               type: "field_dropdown",
@@ -235,16 +239,22 @@ export function BlocksEditor({
           colour: "#8B72E8",
         },
         {
+          type: "robokan_sensor_read",
+          message0: labels.sensorReadMessage,
+          args0: [
+            { type: "field_dropdown", name: "INSTANCE", options: sensorOptions.length ? sensorOptions : [["sensor:1", "sensor:1"]] },
+            { type: "field_input", name: "RESULT", text: "reading_1" },
+          ],
+          previousStatement: null, nextStatement: null, colour: "#8B72E8",
+        },
+        {
           type: "robokan_digital_write",
           message0: labels.ledMessage,
           args0: [
             {
               type: "field_dropdown",
               name: "PIN",
-              options: Array.from({ length: 14 }, (_, index) => [
-                `D${index}`,
-                `D${index}`,
-              ]),
+              options: [...Array.from({ length: 14 }, (_, index) => ["D"+index, "D"+index]), ...[17, 22, 23, 24, 27].map((pin) => ["GPIO"+pin, "GPIO"+pin])],
             },
             {
               type: "field_dropdown",
@@ -284,6 +294,15 @@ export function BlocksEditor({
           nextStatement: null,
           colour: "#F16C75",
         },
+        {
+          type: "robokan_servo_write",
+          message0: labels.servoMessage,
+          args0: [
+            { type: "field_dropdown", name: "INSTANCE", options: servoOptions.length ? servoOptions : [["servo-sg90:1", "servo-sg90:1"]] },
+            { type: "field_number", name: "ANGLE", value: 90, min: 0, max: 180 },
+          ],
+          previousStatement: null, nextStatement: null, colour: "#F16C75",
+        },
       ]);
     }
     const workspace = Blockly.inject(containerRef.current, {
@@ -306,7 +325,7 @@ export function BlocksEditor({
             kind: "category",
             name: labels.toolbox.sensors,
             colour: "#8B72E8",
-            contents: [{ kind: "block", type: "robokan_read_distance" }],
+            contents: [{ kind: "block", type: "robokan_read_distance" }, { kind: "block", type: "robokan_sensor_read" }],
           },
           {
             kind: "category",
@@ -315,6 +334,7 @@ export function BlocksEditor({
             contents: [
               { kind: "block", type: "robokan_digital_write" },
               { kind: "block", type: "robokan_buzzer_write" },
+              { kind: "block", type: "robokan_servo_write" },
             ],
           },
         ],
@@ -376,6 +396,12 @@ export function BlocksEditor({
                 resultId: block.getFieldValue("RESULT"),
               });
               break;
+            case "robokan_sensor_read":
+              blocks.push({ type: "sensor_read", instanceId: block.getFieldValue("INSTANCE"), resultId: block.getFieldValue("RESULT") });
+              break;
+            case "robokan_servo_write":
+              blocks.push({ type: "servo_write", instanceId: block.getFieldValue("INSTANCE"), angleDeg: Number(block.getFieldValue("ANGLE")) });
+              break;
             case "robokan_digital_write":
               blocks.push({
                 type: "digital_write",
@@ -416,6 +442,7 @@ export function BlocksEditor({
         digitalValue: "VALUE",
         isOn: "ON",
         frequencyHz: "FREQUENCY",
+        angleDeg: "ANGLE",
       };
       for (const [key, value] of Object.entries(definition)) {
         if (key !== "type")

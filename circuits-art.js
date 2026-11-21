@@ -67,6 +67,14 @@ function servo() {
   return `<path d="M17 65C0 70 12 102 0 112" stroke="#785342" stroke-width="3" fill="none"/><path d="M21 65C4 70 16 102 4 112" stroke="#CF4F4E" stroke-width="3" fill="none"/><path d="M25 65C8 70 20 102 8 112" stroke="#DDA85A" stroke-width="3" fill="none"/><rect x="20" y="27" width="62" height="65" rx="3" fill="#2E65A5" stroke="#1C528D"/><rect x="14" y="39" width="74" height="8" rx="2" fill="#497BB5"/><rect x="23" y="52" width="56" height="34" rx="1" fill="#3271B3"/><path d="M29 32h44M25 50v32" stroke="#8AB1D4" stroke-width="1.5"/><circle cx="52" cy="30" r="17" fill="#477DB7"/><circle cx="52" cy="25" r="9" fill="#D9E0DF"/><path d="M26 19h52q5 0 5 5t-5 5H26q-5 0-5-5t5-5" fill="#F2F3ED" stroke="#B9C7CD"/><circle cx="52" cy="24" r="3" fill="#95A2AA"/><circle cx="28" cy="24" r="1.6" fill="#97A7B6"/><circle cx="76" cy="24" r="1.6" fill="#97A7B6"/><text x="29" y="67" font-family="monospace" font-size="6" fill="#DFEAF7">MICRO SERVO</text><text x="40" y="77" font-family="monospace" font-size="7" fill="#DFEAF7">9g</text>`;
 }
 
+const genericArt = (title, color = "#2878F0") => () =>
+  `<rect x="8" y="8" width="144" height="86" rx="10" fill="${color}" stroke="#17243B" stroke-width="2"/><rect x="15" y="15" width="130" height="72" rx="7" fill="#FFFFFF" opacity=".12"/><text x="80" y="48" text-anchor="middle" fill="#FFFFFF" font-family="monospace" font-size="10">${title}</text>`;
+const pinsAt = (names, width, y) => names.map((name, i) => ({
+  name, x: 14 + i * (width - 28) / Math.max(1, names.length - 1), y,
+}));
+const sensorArt = (title) => () =>
+  `<rect x="8" y="8" width="164" height="90" rx="8" fill="#23877A" stroke="#174D7F" stroke-width="2"/><circle cx="45" cy="43" r="17" fill="#DDE7EA" stroke="#6A7F8B"/><circle cx="45" cy="43" r="9" fill="#324660"/><rect x="79" y="29" width="74" height="29" rx="4" fill="#F3F6FB"/><text x="116" y="47" text-anchor="middle" fill="#17243B" font-family="monospace" font-size="7">${title}</text><path d="M28 98v18m30-18v18m30-18v18m30-18v18" stroke="#A9B6C3" stroke-width="3"/>`;
+
 export const componentTypes = {
   motor: { name: 'Motor DC', model: 'Motor educativo', category: 'outputs', width: 125, height: 100,
     art: () => '<rect x="18" y="15" width="82" height="60" rx="15" fill="#BAC6D5" stroke="#52627A" stroke-width="2"/><circle cx="59" cy="45" r="22" fill="#17243B"/><circle cx="59" cy="45" r="9" fill="#FFB84D"/><path d="M100 45h22M30 75v22M85 75v22" stroke="#52627A" stroke-width="5"/>',
@@ -74,11 +82,18 @@ export const componentTypes = {
   buzzer: { name: 'Buzzer', model: 'Buzzer educativo', category: 'outputs', width: 95, height: 100,
     art: () => '<ellipse cx="47" cy="42" rx="34" ry="32" fill="#17243B" stroke="#52627A" stroke-width="2"/><ellipse cx="47" cy="36" rx="27" ry="23" fill="#324660"/><circle cx="47" cy="36" r="7" fill="#101A2B"/><path d="M30 70v27M65 70v27" stroke="#BAC6D5" stroke-width="4"/><text x="28" y="87" fill="#F16C75" font-size="14">+</text>',
     pins: [{ name: 'POSITIVE', x: 30, y: 97 }, { name: 'NEGATIVE', x: 65, y: 97 }] },
-  uno: { name: 'Placa Uno', model: 'ATmega328P', category: 'boards', width:340, height:245, art:uno, pins:[...Array.from({length:8}, (_,i)=>({name:['AREF','GND','D13','D12','D11','D10','D9','D8'][i],x:119+i*14,y:14})),...Array.from({length:6},(_,i)=>({name:`D${7-i}`,x:249+i*14,y:14})),...Array.from({length:8},(_,i)=>({name:['IOREF','RESET','3V3','5V','GND1','GND2','VIN','NC'][i],x:136+i*14,y:230})),...Array.from({length:6},(_,i)=>({name:`A${i}`,x:260+i*12,y:230}))] },
+  uno: { name: 'Arduino Uno', model: 'ATmega328P', category: 'boards', width:340, height:245, art:uno, pins:[...Array.from({length:8}, (_,i)=>({name:['AREF','GND','D13','D12','D11','D10','D9','D8'][i],x:119+i*14,y:14})),...Array.from({length:6},(_,i)=>({name:`D${7-i}`,x:249+i*14,y:14})),...Array.from({length:8},(_,i)=>({name:['IOREF','RESET','3V3','5V','GND1','GND2','VIN','NC'][i],x:136+i*14,y:230})),...Array.from({length:6},(_,i)=>({name:`A${i}`,x:260+i*12,y:230}))] },
+  pi: { name:'Raspberry Pi',model:'GPIO 3.3 V',category:'boards',width:340,height:210,art:genericArt('RASPBERRY PI','#B34856'),pins:[...pinsAt(['GPIO17','GPIO22','GPIO23','GPIO24','GPIO27'],340,18),...pinsAt(['5V_1','GND_1','3V3_1','GND_2','5V_2','GND_3'],340,202)] },
   ultrasonic: { name:'Sensor ultrasónico', model:'HC-SR04', category:'sensors', width:225,height:128,art:ultrasonic,pins:['VCC','TRIG','ECHO','GND'].map((name,i)=>({name,x:87+i*18,y:124})) },
-  breadboard: { name:'Protoboard',model:'24 columnas',category:'boards',width:300,height:186,art:breadboard,pins:Array.from({length:24},(_,col)=>Array.from({length:10},(_,row)=>({name:`${'abcdefghij'[row]}${col+1}`,x:22.65+col*11,y:row<5?44.65+row*9:113.65+(row-5)*9}))).flat() },
-  led:{name:'LED rojo',model:'5 mm',category:'outputs',width:90,height:110,art:led,pins:[{name:'Ánodo (+)',x:34,y:105},{name:'Cátodo (−)',x:56,y:93}]},
-  resistor:{name:'Resistencia',model:'220 Ω',category:'boards',width:150,height:50,art:resistor,pins:[{name:'1',x:2,y:25},{name:'2',x:148,y:25}]},
+  flame: {name:'Sensor de flama',model:'AOUT · DOUT',category:'sensors',width:180,height:125,art:sensorArt('FLAME SENSOR'),pins:pinsAt(['VCC','GND','DOUT','AOUT'],180,116)},
+  gas: {name:'Sensor de gas MQ-2',model:'AOUT · DOUT',category:'sensors',width:180,height:125,art:sensorArt('MQ-2 GAS'),pins:pinsAt(['VCC','GND','DOUT','AOUT'],180,116)},
+  infrared: {name:'Sensor infrarrojo',model:'Seguidor de línea',category:'sensors',width:180,height:125,art:sensorArt('IR LINE'),pins:pinsAt(['VCC','GND','OUT'],180,116)},
+  lm35: {name:'Sensor de temperatura',model:'LM35',category:'sensors',width:150,height:125,art:sensorArt('LM35'),pins:pinsAt(['VCC','OUT','GND'],150,116)},
+  l298n: {name:'Driver de motor',model:'L298N',category:'outputs',width:220,height:150,art:genericArt('L298N DRIVER','#37495F'),pins:[...pinsAt(['ENA','IN1','IN2','IN3','IN4','ENB'],220,12),...pinsAt(['OUT1','OUT2','OUT3','OUT4'],220,145),{name:'VCC_MOTOR',x:20,y:78},{name:'GND',x:110,y:78},{name:'5V',x:200,y:78}]},
+  battery: {name:'Batería',model:'9 V',category:'boards',width:130,height:125,art:genericArt('9V BATTERY','#334155'),pins:[{name:'POSITIVE',x:38,y:120},{name:'NEGATIVE',x:92,y:120}]},
+  breadboard: { name:'Protoboard',model:'24 columnas',category:'boards',width:300,height:186,art:breadboard,pins:[...Array.from({length:24},(_,col)=>Array.from({length:10},(_,row)=>({name:`${'abcdefghij'[row]}${col+1}`,x:22.65+col*11,y:row<5?44.65+row*9:113.65+(row-5)*9}))).flat(),...['rail_top_pos','rail_top_neg','rail_bottom_pos','rail_bottom_neg'].flatMap((rail,index)=>Array.from({length:24},(_,col)=>({name:`${rail}_${col+1}`,x:22.65+col*11,y:[20.65,25.65,171.65,176.65][index]})))] },
+  led:{name:'LED rojo',model:'5 mm',category:'outputs',width:90,height:110,art:led,pins:[{name:'ANODE',x:34,y:105},{name:'CATHODE',x:56,y:93}]},
+  resistor:{name:'Resistencia',model:'220 Ω',category:'boards',width:150,height:50,art:resistor,pins:[{name:'PIN_A',x:2,y:25},{name:'PIN_B',x:148,y:25}]},
   servo:{name:'Microservomotor',model:'9 g · SG90',category:'outputs',width:100,height:115,art:servo,pins:[{name:'GND',x:0,y:112},{name:'VCC',x:4,y:112},{name:'Señal',x:8,y:112}]}
 };
 

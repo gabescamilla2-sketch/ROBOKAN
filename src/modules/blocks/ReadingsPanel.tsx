@@ -10,7 +10,7 @@ export function ReadingsPanel({ readings, isTestMode }: {
     <p className="code-note">{isTestMode ? labels.testReadingsNotice : labels.readingsNotice}</p>
     {entries.length === 0 ? <p className="code-note">{labels.noReadings}</p> :
       <dl className="readings-list">{entries.map(([resultId, reading]) => <div key={resultId}>
-        <dt>{resultId}</dt><dd>{reading.toLocaleString("es-MX", { maximumFractionDigits: 2 })} <span>cm</span></dd>
+        <dt>{resultId}</dt><dd>{reading.toLocaleString("es-MX", { maximumFractionDigits: 2 })} <span>{resultId.startsWith("distance_cm") ? "cm" : "valor"}</span></dd>
       </div>)}</dl>}
   </section>;
 }

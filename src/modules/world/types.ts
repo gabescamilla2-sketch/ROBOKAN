@@ -22,6 +22,7 @@ export interface WorldApi {
     flameIntensityNorm(instanceId: string): number;
     gasLevelNorm(instanceId: string): number;
     groundReflectanceNorm(instanceId: string): number;
+    temperatureC(instanceId: string): number;
   };
   applyActuator(command: WorldActuatorCommand): void;
   reset(): void;

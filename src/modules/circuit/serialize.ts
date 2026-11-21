@@ -71,6 +71,9 @@ export function deserializeCircuit(
         instance.mountPointId === undefined
           ? undefined
           : text(instance.mountPointId);
+      const scale = instance.scale === undefined ? undefined : coordinate(instance.scale);
+      if (scale !== undefined && (scale < 0.5 || scale > 1.5))
+        throw new Error("Invalid component scale");
       return {
         instanceId,
         specId,
@@ -80,6 +83,7 @@ export function deserializeCircuit(
         },
         rotationDeg,
         ...(mountPointId === undefined ? {} : { mountPointId }),
+        ...(scale === undefined ? {} : { scale }),
       };
     },
   );

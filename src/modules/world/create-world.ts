@@ -186,7 +186,7 @@ export async function createRobotWorld(
         const nativeOrigin = model?.markers.get("sensor.origin");
         if (nativeOrigin) sensorOrigins.set(instance.instanceId, nativeOrigin);
         else if (
-          ["flame-sensor", "mq2-gas-sensor", "ir-line-sensor"].includes(
+          ["flame-sensor", "mq2-gas-sensor", "ir-line-sensor", "lm35"].includes(
             instance.specId,
           )
         ) {
@@ -445,6 +445,8 @@ export async function createRobotWorld(
           const origin = sensorPosition(id, "ir-line-sensor");
           return Math.abs(origin.x) < 0.15 ? 0.1 : 0.9;
         },
+        temperatureC: (id) =>
+          24 + Math.max(0, 60 - Vector3.Distance(sensorPosition(id, "lm35"), firePosition) * 12),
       },
       applyActuator,
       getSnapshot: () => {

@@ -49,10 +49,9 @@ function BlocksPage() {
         const selectedBoard = new URLSearchParams(location.search).get("board");
         if (
           selectedBoard &&
-          imported.componentInstances.some(
-            (instance) =>
-              instance.instanceId === selectedBoard &&
-              instance.specId === "arduino-uno",
+          imported.componentInstances.some((instance) =>
+            instance.instanceId === selectedBoard &&
+            circuitSpecs.find((spec) => spec.specId === instance.specId)?.category === "board",
           )
         )
           imported.boardInstanceId = selectedBoard;
@@ -108,6 +107,7 @@ function BlocksPage() {
           gasLevelNorm: (id) => getWorld().query.gasLevelNorm(id),
           groundReflectanceNorm: (id) =>
             getWorld().query.groundReflectanceNorm(id),
+          temperatureC: (id) => getWorld().query.temperatureC(id),
         },
         applyActuator: (command) => getWorld().applyActuator(command),
       },
@@ -161,6 +161,17 @@ function BlocksPage() {
           ].includes(instruction.op),
         )));
   const labels = spanish.blocks;
+  const componentOptions = (matches: (specId: string) => boolean): [string, string][] =>
+    robot.componentInstances
+      .filter((instance) => matches(instance.specId))
+      .map((instance) => [`${instance.specId} · ${instance.instanceId}`, instance.instanceId]);
+  const sensorOptions = componentOptions((specId) => {
+    const kind = circuitSpecs.find((spec) => spec.specId === specId)?.sensorKind;
+    return Boolean(kind && kind !== "ultrasonic");
+  });
+  const servoOptions = componentOptions((specId) =>
+    circuitSpecs.find((spec) => spec.specId === specId)?.actuatorKind === "servo",
+  );
   const hasHardware = instructions.some(
     (instruction) => instruction.op !== "wait",
   );
@@ -361,6 +372,8 @@ function BlocksPage() {
               isActive ? runner.instructionIndex : undefined
             }
             programKey={programKey}
+            sensorOptions={sensorOptions}
+            servoOptions={servoOptions}
             initialProgram={
               isMotorExample ? createWorldExample().program : undefined
             }

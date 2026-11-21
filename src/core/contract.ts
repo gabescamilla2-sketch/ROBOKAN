@@ -9,7 +9,7 @@ export type PinType =
   | "pwm_out"
   | "passive";
 export type ComponentStatus = "ok" | "unpowered" | "burned";
-export type SensorKind = "ultrasonic" | "flame" | "gas" | "infrared";
+export type SensorKind = "ultrasonic" | "flame" | "gas" | "infrared" | "temperature";
 export type ActuatorKind = "motor" | "servo" | "led" | "buzzer";
 export type ComponentCategory =
   "board" | "sensor" | "actuator" | "passive" | "power_source" | "breadboard";
@@ -55,6 +55,8 @@ export interface ComponentInstance {
   circuitPosition: Point;
   rotationDeg: number;
   mountPointId?: string;
+  /** Visual scale relative to the model's catalog size (0.5–1.5). */
+  scale?: number;
 }
 export interface Wire {
   wireId: string;

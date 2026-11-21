@@ -13,6 +13,7 @@ function makeSpec(
     "flame-sensor": "flame",
     "mq2-gas-sensor": "gas",
     "ir-line-sensor": "infrared",
+    lm35: "temperature",
   };
   const actuatorKinds: Record<string, ComponentSpec["actuatorKind"]> = {
     "dc-motor": "motor",
@@ -71,12 +72,12 @@ arduino.pins = [
 ];
 const pi = makeSpec("raspberry-pi-4", "board", [], 340, 190, 3.3);
 pi.pins = [
-  ...Array.from({ length: 26 }, (_, i) => ({
-    pinName: `GPIO${i + 2}`,
+  ...[17, 22, 23, 24, 27].map((gpio, i) => ({
+    pinName: `GPIO${gpio}`,
     pinType: "digital_io" as const,
     maxVoltageV: 3.3,
-    svgPosition: { x: 14 + (i % 13) * 26, y: i < 13 ? 8 : 182 },
-    labelKey: `GPIO${i + 2}`,
+    svgPosition: { x: 14 + i * 26, y: 8 },
+    labelKey: `GPIO${gpio}`,
   })),
   ...[
     "5V_1",
@@ -142,6 +143,7 @@ export const circuitSpecs: readonly ComponentSpec[] = [
     ["DOUT", "digital_out"],
   ]),
   sensor("ir-line-sensor", [["OUT", "digital_out"]]),
+  sensor("lm35", [["OUT", "analog_in"]]),
   makeSpec(
     "led",
     "actuator",
@@ -179,8 +181,8 @@ export const circuitSpecs: readonly ComponentSpec[] = [
     ["GND", "ground"],
   ]),
   makeSpec("dc-motor", "actuator", [
-    ["MOTOR_POSITIVE", "power"],
-    ["MOTOR_NEGATIVE", "ground"],
+    ["MOTOR_POSITIVE", "passive"],
+    ["MOTOR_NEGATIVE", "passive"],
   ]),
   makeSpec(
     "motor-driver-l298n",

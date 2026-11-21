@@ -8,7 +8,7 @@ export function parseProgramFile(source: string): { blocks?: object } {
   if (Object.keys(workspace).some((key) => key !== "blocks")) throw new Error("Unknown workspace serializer");
   const pending: unknown[] = [workspace];
   let visited = 0;
-  const blockTypes = new Set(["robokan_wait", "robokan_motor_write", "robokan_read_distance", "robokan_digital_write", "robokan_buzzer_write"]);
+  const blockTypes = new Set(["robokan_wait", "robokan_motor_write", "robokan_read_distance", "robokan_sensor_read", "robokan_digital_write", "robokan_servo_write", "robokan_buzzer_write"]);
   while (pending.length) {
     const current = pending.pop();
     if (!current || typeof current !== "object") continue;
