@@ -8,12 +8,22 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:circuit": "vitest run tests/circuit-rules.test.ts",
-    "typecheck:circuit": "tsc --project tsconfig.circuit.json --noEmit"
+    "test:circuit": "vitest run",
+    "typecheck:circuit": "tsc --project tsconfig.circuit.json --noEmit",
+    "dev": "vite",
+    "build": "tsc --project tsconfig.circuit.json --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "7.0.2",
+    "vite": "8.3.8",
     "vitest": "5.1.1"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   }
 }

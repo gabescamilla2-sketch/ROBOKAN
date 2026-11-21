@@ -6,11 +6,27 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "resolveJsonModule": true,
+    "esModuleInterop": true
   },
   "include": [
+    "src/core/**/*.ts",
     "src/modules/circuit/**/*.ts",
+    "src/modules/circuit/**/*.tsx",
+    "src/dev/dev-circuit.tsx",
+    "src/dev/circuit-*.ts",
     "tests/circuit-*.test.ts",
-    "vitest.config.mts"
+    "vitest.config.mts",
+    "vite.config.mts"
   ]
 }
