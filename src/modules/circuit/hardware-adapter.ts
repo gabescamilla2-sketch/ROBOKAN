@@ -12,22 +12,8 @@ import { RULE_IDS } from "../../core";
 import { createPinRef } from "./netlist";
 import { evaluate } from "./api";
 
-/** Structural surface expected from the Role 3 world module. */
-export type WorldActuatorCommand =
-  | { instanceId: string; actuatorKind: "motor"; speedPct: number }
-  | { instanceId: string; actuatorKind: "servo"; angleDeg: number }
-  | {
-      instanceId: string;
-      actuatorKind: "led";
-      isOn: boolean;
-      brightnessNorm: number;
-    }
-  | {
-      instanceId: string;
-      actuatorKind: "buzzer";
-      isOn: boolean;
-      frequencyHz: number;
-    };
+import type { WorldActuatorCommand } from "../world";
+export type { WorldActuatorCommand } from "../world";
 
 export interface CircuitWorldApi {
   query: {
@@ -44,6 +30,7 @@ export interface ExecuteHardwareDependencies {
   getComponentSpecs(): readonly ComponentSpec[];
   getBoardInstanceId(): string;
   world: CircuitWorldApi;
+  onDrivesChange?(drives: PinDrives): void;
 }
 
 const aborted = (signal: AbortSignal) => {
@@ -86,24 +73,33 @@ export function createExecuteHardwareInstruction(
     const board = graph.componentInstances.find(
       (instance) => instance.instanceId === boardInstanceId,
     );
-    const boardSpec = board && specs.find((spec) => spec.specId === board.specId);
+    const boardSpec =
+      board && specs.find((spec) => spec.specId === board.specId);
     if (!board || boardSpec?.category !== "board")
       return {
         kind: "electrical_error",
-        violations: [
-          rule(RULE_IDS.missingPower, boardInstanceId || "circuit"),
-        ],
+        violations: [rule(RULE_IDS.missingPower, boardInstanceId || "circuit")],
       };
 
     const circuitState = evaluate(graph, specs, outputDrives as PinDrives);
-    if (circuitState.violations.length)
+    const blockingViolations = circuitState.violations.filter(
+      (violation) => violation.ruleId !== RULE_IDS.floatingPin,
+    );
+    const isShutdown =
+      (instruction.op === "motor_write" && instruction.speedPct === 0) ||
+      (instruction.op === "buzzer_write" && !instruction.isOn) ||
+      (instruction.op === "digital_write" && instruction.digitalValue === 0);
+    if (blockingViolations.length && !isShutdown)
       return {
         kind: "electrical_error",
-        violations: circuitState.violations,
+        violations: blockingViolations,
       };
 
     const componentById = new Map(
-      graph.componentInstances.map((instance) => [instance.instanceId, instance]),
+      graph.componentInstances.map((instance) => [
+        instance.instanceId,
+        instance,
+      ]),
     );
     const specById = new Map(specs.map((spec) => [spec.specId, spec]));
     const netFor = (pinRef: string) =>
@@ -115,7 +111,11 @@ export function createExecuteHardwareInstruction(
       resistorEdges.set(b, new Set([...(resistorEdges.get(b) ?? []), a]));
     };
     for (const instance of graph.componentInstances) {
-      if (specs.find((spec) => spec.specId === instance.specId)?.specId !== "resistor") continue;
+      if (
+        specs.find((spec) => spec.specId === instance.specId)?.specId !==
+        "resistor"
+      )
+        continue;
       joinResistorNets(
         netFor(createPinRef(instance.instanceId, "PIN_A"))?.netId,
         netFor(createPinRef(instance.instanceId, "PIN_B"))?.netId,
@@ -125,7 +125,8 @@ export function createExecuteHardwareInstruction(
       const start = netFor(fromRef)?.netId;
       const target = netFor(toRef)?.netId;
       if (!start || !target) return false;
-      const pending = [start], visited = new Set<string>();
+      const pending = [start],
+        visited = new Set<string>();
       while (pending.length) {
         const current = pending.pop()!;
         if (current === target) return true;
@@ -163,8 +164,12 @@ export function createExecuteHardwareInstruction(
         .find(
           ({ instance, spec }) =>
             spec?.sensorKind === "ultrasonic" &&
-            trigNet?.pinRefs.includes(createPinRef(instance.instanceId, "TRIG")) &&
-            echoNet?.pinRefs.includes(createPinRef(instance.instanceId, "ECHO")),
+            trigNet?.pinRefs.includes(
+              createPinRef(instance.instanceId, "TRIG"),
+            ) &&
+            echoNet?.pinRefs.includes(
+              createPinRef(instance.instanceId, "ECHO"),
+            ),
         );
       if (!sensor?.spec)
         return {
@@ -194,7 +199,7 @@ export function createExecuteHardwareInstruction(
       if (
         !pin ||
         !["digital_io", "pwm_out"].includes(pin.pinType) ||
-        instruction.digitalValue !== 0 && instruction.digitalValue !== 1
+        (instruction.digitalValue !== 0 && instruction.digitalValue !== 1)
       )
         return {
           kind: "electrical_error",
@@ -203,29 +208,37 @@ export function createExecuteHardwareInstruction(
       const voltageV =
         instruction.digitalValue === 0
           ? 0
-          : pin.maxVoltageV ?? boardSpec.supplyVoltageV;
-      outputDrives[pinRef] = {
+          : (pin.maxVoltageV ?? boardSpec.supplyVoltageV);
+      const nextDrive: PinSignal = {
         signalKind: "digital",
         voltageV,
         digitalValue: instruction.digitalValue,
       };
-      const drivenState = evaluate(graph, specs, outputDrives);
-      if (drivenState.violations.length)
+      const candidateDrives = { ...outputDrives, [pinRef]: nextDrive };
+      const drivenState = evaluate(graph, specs, candidateDrives);
+      const drivenViolations = drivenState.violations.filter(
+        (violation) => violation.ruleId !== RULE_IDS.floatingPin,
+      );
+      if (instruction.digitalValue === 1 && drivenViolations.length)
         return {
           kind: "electrical_error",
-          violations: drivenState.violations,
+          violations: drivenViolations,
         };
       const targets = graph.componentInstances.flatMap((instance) => {
         const spec = specById.get(instance.specId);
         if (spec?.actuatorKind !== "led") return [];
         const anode = createPinRef(instance.instanceId, "ANODE");
         const cathode = createPinRef(instance.instanceId, "CATHODE");
-        return reachesThroughResistors(pinRef, anode) || reachesThroughResistors(pinRef, cathode)
+        return reachesThroughResistors(pinRef, anode) ||
+          reachesThroughResistors(pinRef, cathode)
           ? [{ instance, spec }]
           : [];
       });
       for (const target of targets) {
-        if (drivenState.statusByInstance[target.instance.instanceId] !== "ok")
+        if (
+          instruction.digitalValue === 1 &&
+          drivenState.statusByInstance[target.instance.instanceId] !== "ok"
+        )
           return {
             kind: "electrical_error",
             violations: [
@@ -246,6 +259,9 @@ export function createExecuteHardwareInstruction(
           brightnessNorm: instruction.digitalValue,
         });
       }
+      aborted(signal);
+      outputDrives[pinRef] = nextDrive;
+      dependencies.onDrivesChange?.({ ...outputDrives });
       return { kind: "completed" };
     }
 
@@ -257,7 +273,7 @@ export function createExecuteHardwareInstruction(
           kind: "electrical_error",
           violations: [rule(RULE_IDS.floatingPin, instruction.instanceId)],
         };
-      if (!powered(instruction.instanceId))
+      if (instruction.speedPct !== 0 && !powered(instruction.instanceId))
         return rejectUnpowered(instruction.instanceId);
       aborted(signal);
       await dependencies.world.applyActuator({

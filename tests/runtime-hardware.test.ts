@@ -32,7 +32,11 @@ it("stores distance readings and executes subsequent writes", async () => {
   await vi.runAllTimersAsync();
   expect(runner.readings).toEqual({ distance_cm: 23.5 });
   expect(runner.status).toBe("completed");
-  expect(adapter).toHaveBeenCalledTimes(2);
+  expect(adapter).toHaveBeenCalledTimes(3);
+  expect(adapter).toHaveBeenLastCalledWith(
+    { op: "digital_write", pinName: "D3", digitalValue: 0 },
+    expect.any(AbortSignal),
+  );
 });
 
 it("zeros and restores motors while preserving the remaining wait, then shuts down actuators", async () => {

@@ -279,3 +279,40 @@ La interfaz combinada descrita en el apartado anterior fue retirada. Circuito y 
 - Se ampliaron las pruebas del panel para cubrir pulsaciones reales y recepción de estados, y las pruebas de transferencia para conservar identidades.
 - La comprobación del mundo 3D y el adaptador oficial siguen pendientes de sus implementaciones publicadas por Roles 3 y 4.
 - Verificación posterior: 74 pruebas aprobadas (5 del menú y 69 de Vitest), build, comprobación de tipos de circuito y chequeo de formato correctos. Permanece el aviso de tamaño del paquete Blockly y la revisión visual manual de la animación.
+
+## Implementación del mundo 3D solicitada por el usuario
+
+- Se creó el commit `14d2a8d` para el aviso de hardware y se integró main. El merge `4cb2d0c`, que contiene ese commit, fue publicado en GitHub antes de comenzar el 3D.
+- El pull incorporó el adaptador de Rol 4 y `public/models/scenery/scene.glb`. La implementación usa esa escena local como base e instala Babylon.js y sus cargadores GLTF.
+- `src/modules/world/types.ts` define `WorldApi`, `WorldActuatorCommand` y `RobotWorld`. El módulo público exporta los tipos, `createRobotWorld` y `WorldViewport`.
+- Movimiento diferencial con dos motores, colisiones simplificadas contra obstáculos y límites de arena, cámara orbital y limpieza de recursos al cerrar. Los motores sin montaje explícito alternan izquierda y derecha por orden de componentes.
+- El ultrasónico consulta un rayo frontal de hasta 450 cm sobre los obstáculos de la escena. Las consultas de flama y gas devuelven niveles normalizados según distancia a las fuentes. El infrarrojo lee una franja central del suelo.
+- LED tiene emisión visual, buzzer usa audio del navegador y servo mueve un brazo de representación. Las instancias se validan contra el robot recibido.
+- `WorldViewport` se carga bajo demanda. El mundo sigue actualizándose durante Esperar y responde a los comandos del adaptador oficial del circuito.
+- Se corrigió el adaptador para permitir GPIO flotantes sin uso, órdenes de apagado con componentes sin alimentación y actualización de señales después de comandos aceptados. Los comandos de actuadores usan el tipo exportado por world.
+- El catálogo educativo incluye categorías de sensor y actuador. Los motores de ejemplo usan alimentación positiva y tierra y se incorporaron motor y buzzer a la paleta 2D.
+- Desde Circuitos, Mundo 3D abre la placa seleccionada o la primera disponible. El doble clic sobre Arduino conserva el editor de programación deslizable.
+- `/blocks.html?example=motors&world=1` carga dos motores conectados y un programa inicial de avance, espera, lectura y parada. Los guardados del ejemplo usan su propia clave.
+- Se comprobó la escena en Brave: carga, ejecución, pausa, detención y lectura `distance_cm` desde el entorno 3D. Se observaron 426.31 cm durante la prueba.
+- Las pruebas nuevas comprueban movimiento, giros, colisiones, límites temporales y ejecución del ejemplo mediante la validación eléctrica.
+- El escenario usa la geometría del prototipo compartido. Las colisiones y alimentación de motores son educativas y el montaje automático usa posiciones definidas para ese modelo. El mapeo completo de modelos de producción del Rol 5 sigue pendiente.
+- Los cambios 3D siguen locales y requieren su propio commit después de revisión.
+- Verificación final de esta implementación: 78 pruebas aprobadas (5 de menú y 73 de Vitest), build, chequeo de tipos de circuito y formato correctos. La instalación de dependencias reportó cero vulnerabilidades.
+- Babylon.js se carga bajo demanda con importaciones específicas. Quedan avisos de tamaño para los paquetes de Blockly y mundo 3D, de aproximadamente 675 kB y 1.78 MB respectivamente antes de compresión.
+
+## Cierre funcional del mundo 3D y vínculo con bloques
+
+- El editor y el mundo se muestran en columnas, con pestañas Mundo 3D, C++ e Instrucciones. Cambiar la salida visible conserva el mundo y la ejecución. La barra Ejecutar/Pausar/Reanudar/Detener permanece visible al desplazarse.
+- La caja de herramientas tiene categorías Movimiento, Tiempo, Sensores y Salidas para dejar espacio al programa. El bloque activo y el número de instrucción permiten seguir la ejecución.
+- El robot aplica velocidades independientes por lado; los identificadores se ordenan de forma numérica y estable para el montaje automático. El montaje explícito izquierda/derecha tiene prioridad. Se muestra la asignación en el visor.
+- El movimiento se divide en pasos cortos para comprobar colisiones incluso a pocos cuadros por segundo. Las ruedas se animan con la velocidad de su lado, incluidos giros y reversa. Las paredes y obstáculos impiden atravesar la geometría.
+- Cámaras Orbital, Superior y Seguir robot; trayectoria azul limitada a 500 puntos y rayo ultrasónico amarillo con marcador de extremo. Son ayudas visuales que se pueden desactivar.
+- Telemetría en vivo: velocidad izquierda, velocidad derecha, distancia al obstáculo y orientación. Una colisión muestra un aviso; un giro o una reversa pueden sacar al robot del bloqueo.
+- Reiniciar robot limpia trayectoria, motores, sonidos y LED y devuelve la posición inicial. Se puede elegir reiniciar al pulsar Ejecutar o continuar desde la posición actual.
+- Repetir programa mantiene el comportamiento de `loop()`. Si se desactiva, se ejecuta una sola vez y el runtime apaga los actuadores al terminar. El generador C++ refleja la ejecución única en `setup()` y deja `loop()` vacío, con las mismas órdenes de apagado.
+- Al ocultar la pestaña del navegador se pausa el programa para evitar avances imprevistos por temporizadores de una pestaña inactiva. Reanudar conserva el tiempo restante y restaura los motores después de validar el circuito.
+- El ejemplo de motores incluye avance, lectura ultrasónica, giro con velocidades opuestas, reversa y parada. Los programas guardados se conservan y tienen prioridad sobre el ejemplo inicial.
+- `tests/world-program.test.ts` verifica bloques → instrucciones → ProgramRunner → adaptador eléctrico → movimiento: avance, pausa sin desplazamiento, reanudación, giro, reversa, lectura y apagado al finalizar. También comprueba el C++ de ejecución única.
+- Verificación: 80 pruebas aprobadas (5 de portada y 75 de Vitest), comprobación de tipos y formato del circuito correctos, y compilación de producción correcta. Se verificaron visualmente la trayectoria, la orientación y la lectura del entorno en Brave.
+- Alcance final de esta entrega: simulación educativa con cinemática y colisiones simplificadas. El C++ se muestra como equivalente; se ejecutan instrucciones TypeScript. El catálogo y las posiciones de montaje están adaptados a la escena disponible; los modelos definitivos siguen siendo trabajo de integración del Rol 5.
+- Los cambios de esta entrega permanecen locales, sin un nuevo commit ni push.

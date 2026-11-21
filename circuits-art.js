@@ -68,6 +68,12 @@ function servo() {
 }
 
 export const componentTypes = {
+  motor: { name: 'Motor DC', model: 'Motor educativo', category: 'outputs', width: 125, height: 100,
+    art: () => '<rect x="18" y="15" width="82" height="60" rx="15" fill="#BAC6D5" stroke="#52627A" stroke-width="2"/><circle cx="59" cy="45" r="22" fill="#17243B"/><circle cx="59" cy="45" r="9" fill="#FFB84D"/><path d="M100 45h22M30 75v22M85 75v22" stroke="#52627A" stroke-width="5"/>',
+    pins: [{ name: 'MOTOR_POSITIVE', x: 30, y: 97 }, { name: 'MOTOR_NEGATIVE', x: 85, y: 97 }] },
+  buzzer: { name: 'Buzzer', model: 'Buzzer educativo', category: 'outputs', width: 95, height: 100,
+    art: () => '<ellipse cx="47" cy="42" rx="34" ry="32" fill="#17243B" stroke="#52627A" stroke-width="2"/><ellipse cx="47" cy="36" rx="27" ry="23" fill="#324660"/><circle cx="47" cy="36" r="7" fill="#101A2B"/><path d="M30 70v27M65 70v27" stroke="#BAC6D5" stroke-width="4"/><text x="28" y="87" fill="#F16C75" font-size="14">+</text>',
+    pins: [{ name: 'POSITIVE', x: 30, y: 97 }, { name: 'NEGATIVE', x: 65, y: 97 }] },
   uno: { name: 'Placa Uno', model: 'ATmega328P', category: 'boards', width:340, height:245, art:uno, pins:[...Array.from({length:8}, (_,i)=>({name:['AREF','GND','D13','D12','D11','D10','D9','D8'][i],x:119+i*14,y:14})),...Array.from({length:6},(_,i)=>({name:`D${7-i}`,x:249+i*14,y:14})),...Array.from({length:8},(_,i)=>({name:['IOREF','RESET','3V3','5V','GND1','GND2','VIN','NC'][i],x:136+i*14,y:230})),...Array.from({length:6},(_,i)=>({name:`A${i}`,x:260+i*12,y:230}))] },
   ultrasonic: { name:'Sensor ultrasónico', model:'HC-SR04', category:'sensors', width:225,height:128,art:ultrasonic,pins:['VCC','TRIG','ECHO','GND'].map((name,i)=>({name,x:87+i*18,y:124})) },
   breadboard: { name:'Protoboard',model:'24 columnas',category:'boards',width:300,height:186,art:breadboard,pins:Array.from({length:24},(_,col)=>Array.from({length:10},(_,row)=>({name:`${'abcdefghij'[row]}${col+1}`,x:22.65+col*11,y:row<5?44.65+row*9:113.65+(row-5)*9}))).flat() },

@@ -208,7 +208,9 @@ export class ProgramRunner {
   private startInstruction(): void {
     const instruction = this.instructions[this.cursor];
     if (!instruction) {
-      this.remainingMs = 0;
+      const completedCount = this.instructions.length;
+      this.stop();
+      this.cursor = completedCount;
       this.currentStatus = "completed";
       return;
     }

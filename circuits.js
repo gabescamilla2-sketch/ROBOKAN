@@ -127,7 +127,7 @@ function cableBends(wire,index) {
 function renderComponents() {
   $('#components-layer').innerHTML=state.components.map(component => {
     const model=componentTypes[component.type];
-    const canonicalType = { uno:'arduino-uno', ultrasonic:'hc-sr04', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard' }[component.type];
+    const canonicalType = { uno:'arduino-uno', ultrasonic:'hc-sr04', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard', motor:'dc-motor', buzzer:'buzzer' }[component.type];
     const canonicalId = canonicalType + ':' + /-([1-9]\d*)$/.exec(component.id)?.[1];
     const electricalStatus = programComponentStates[canonicalId];
     const ledOn = component.type === 'led' && electricalStatus === 'ok';
@@ -238,13 +238,14 @@ let programComponentStates = {};
 let programReturnFocus = null;
 let programCloseTimer = null;
 
-function openBoardProgram(component) {
+function openBoardProgram(component, withWorld = false) {
   if (programPanel.open || component.type !== 'uno') return;
   try { sessionStorage.setItem('robokan.program.circuit-transfer', snapshot()); }
   catch { status('No se pudo abrir el programa. Comprueba el almacenamiento del navegador.'); return; }
   const componentNumber = /-([1-9]\d*)$/.exec(component.id)?.[1];
   if (!componentNumber) { status('La placa tiene un identificador incompatible.'); return; }
   const params = new URLSearchParams({ circuit: '1', embedded: '1', board: 'arduino-uno:' + componentNumber, programKey: component.id });
+  if (withWorld) params.set('world', '1');
   programReturnFocus = component.id;
   $('#program-board-name').textContent = componentTypes[component.type].name + ' · ' + component.id;
   programFrame.src = 'blocks.html?' + params.toString();
@@ -255,6 +256,11 @@ function requestProgramClose() {
   programFrame.contentWindow?.postMessage({ type: 'robokan:request-close' }, location.origin);
 }
 $('#close-program-panel').addEventListener('click', requestProgramClose);
+$('#open-world').addEventListener('click', () => {
+  const board = state.components.find(component => component.id === selection?.id && component.type === 'uno') ?? state.components.find(component => component.type === 'uno');
+  if (!board) { status('Añade un Arduino para abrir el mundo 3D.'); return; }
+  openBoardProgram(board, true);
+});
 programPanel.addEventListener('cancel', event => { event.preventDefault(); requestProgramClose(); });
 window.addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== programFrame.contentWindow || !programPanel.open) return;

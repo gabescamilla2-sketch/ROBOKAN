@@ -16,6 +16,8 @@
     "format:check": "prettier --check \"src/core/**/*.ts\" \"src/modules/circuit/*.{ts,tsx,css}\" \"src/dev/circuit-*.ts\" \"src/dev/dev-circuit.tsx\" \"tests/circuit-*.test.ts\""
   },
   "dependencies": {
+    "@babylonjs/core": "^9.37.1",
+    "@babylonjs/loaders": "^9.37.1",
     "blockly": "^12.0.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"

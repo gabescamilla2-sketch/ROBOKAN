@@ -7,6 +7,18 @@ function makeSpec(
   height = 110,
   supplyVoltageV = 5,
 ): ComponentSpec {
+  const sensorKinds: Record<string, ComponentSpec["sensorKind"]> = {
+    "hc-sr04": "ultrasonic",
+    "flame-sensor": "flame",
+    "mq2-gas-sensor": "gas",
+    "ir-line-sensor": "infrared",
+  };
+  const actuatorKinds: Record<string, ComponentSpec["actuatorKind"]> = {
+    "dc-motor": "motor",
+    "servo-sg90": "servo",
+    led: "led",
+    buzzer: "buzzer",
+  };
   return {
     specId,
     category,
@@ -16,6 +28,8 @@ function makeSpec(
     svgPath: "",
     modelPath: "",
     behaviorKind: specId,
+    sensorKind: sensorKinds[specId],
+    actuatorKind: actuatorKinds[specId],
     svgSize: { width, height },
     pins: names.map(([pinName, pinType], index) => ({
       pinName,
@@ -164,8 +178,8 @@ export const circuitSpecs: readonly ComponentSpec[] = [
     ["GND", "ground"],
   ]),
   makeSpec("dc-motor", "actuator", [
-    ["MOTOR_POSITIVE", "passive"],
-    ["MOTOR_NEGATIVE", "passive"],
+    ["MOTOR_POSITIVE", "power"],
+    ["MOTOR_NEGATIVE", "ground"],
   ]),
   makeSpec(
     "motor-driver-l298n",

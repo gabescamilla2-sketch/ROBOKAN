@@ -5,7 +5,7 @@ import { circuitSpecs } from "./circuit-fixtures";
 export function importCircuitWorkbench(source: string): RobotDefinition {
   if (source.length > 2000000) throw new Error("Circuit too large");
   const input = JSON.parse(source) as { components: { id: string; type: string; x: number; y: number }[]; wires: { id: string; from: { component: string; pin: string }; to: { component: string; pin: string }; color: string }[] };
-  const specs: Record<string, string> = { uno: "arduino-uno", ultrasonic: "hc-sr04", breadboard: "breadboard", led: "led", resistor: "resistor", servo: "servo-sg90" };
+  const specs: Record<string, string> = { uno: "arduino-uno", ultrasonic: "hc-sr04", breadboard: "breadboard", led: "led", resistor: "resistor", servo: "servo-sg90", motor: "dc-motor", buzzer: "buzzer" };
   const ids = new Map<string, string>();
   const componentInstances = input.components.map((component) => {
     if (!specs[component.type] || ids.has(component.id)) throw new Error("Invalid component");
