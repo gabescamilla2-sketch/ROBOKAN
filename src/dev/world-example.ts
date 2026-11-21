@@ -31,6 +31,14 @@ export function createAvoiderProgram(): ProgramBlock[] {
   ];
 }
 
+/** Avoid distance the 3D view shows: the first "Avanzar hasta" block's threshold. */
+export function avoidThresholdCm(
+  blocks: readonly ProgramBlock[],
+): number | null {
+  const drive = blocks.find((block) => block.type === "drive_until_distance");
+  return drive?.type === "drive_until_distance" ? drive.thresholdCm : null;
+}
+
 /** Program to preload for a robot: the avoider routine when both drive motors exist. */
 export function presetProgramFor(
   robot: Pick<RobotDefinition, "componentInstances">,

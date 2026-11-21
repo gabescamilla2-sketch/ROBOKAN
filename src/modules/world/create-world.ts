@@ -195,6 +195,22 @@ export async function createRobotWorld(
     const targetMaterial = new StandardMaterial("sensor-hit-material", scene);
     targetMaterial.emissiveColor = Color3.FromHexString("#FFB84D");
     targetMarker.material = targetMaterial;
+    // Avoid distance from the program: a red ring on the ray marks it, and the
+    // ray turns red while an obstacle is closer than it.
+    let avoidThresholdCm: number | null = null;
+    const RAY_COLOR = Color3.FromHexString("#FFB84D");
+    const NEAR_COLOR = Color3.FromHexString("#E8433A");
+    const thresholdRing = MeshBuilder.CreateTorus(
+      "avoid-threshold",
+      { diameter: 0.5, thickness: 0.05, tessellation: 32 },
+      scene,
+    );
+    const thresholdMaterial = new StandardMaterial("avoid-threshold-material", scene);
+    thresholdMaterial.emissiveColor = NEAR_COLOR;
+    thresholdMaterial.disableLighting = true;
+    thresholdRing.material = thresholdMaterial;
+    thresholdRing.isPickable = false;
+    thresholdRing.setEnabled(false);
     let showRay = true,
       showTrace = true;
     const stopSounds = () => {
@@ -658,21 +674,36 @@ export async function createRobotWorld(
       );
       sensorRay.setEnabled(showRay && Boolean(firstSensor));
       targetMarker.setEnabled(showRay && Boolean(firstSensor));
+      thresholdRing.setEnabled(false);
       if (firstSensor && showRay) {
         const origin = sensorPosition(firstSensor.instanceId, "hc-sr04");
-        const end = origin.add(
-          new Vector3(
-            Math.sin(pose.headingRad),
-            0,
-            Math.cos(pose.headingRad),
-          ).scale(distance(firstSensor.instanceId) / 100),
+        const direction = new Vector3(
+          Math.sin(pose.headingRad),
+          0,
+          Math.cos(pose.headingRad),
         );
+        const readingCm = distance(firstSensor.instanceId);
+        const end = origin.add(direction.scale(readingCm / 100));
+        const isNear = avoidThresholdCm !== null && readingCm < avoidThresholdCm;
+        sensorRay.color = isNear ? NEAR_COLOR : RAY_COLOR;
         MeshBuilder.CreateLines(
           "sensor-ray",
           { points: [origin, end], instance: sensorRay },
           scene,
         );
+        targetMaterial.emissiveColor = isNear ? NEAR_COLOR : RAY_COLOR;
         targetMarker.position.copyFrom(end);
+        if (
+          avoidThresholdCm !== null &&
+          avoidThresholdCm <= worldMap.ultrasonicRangeCm
+        ) {
+          // Ring standing across the ray, facing the robot.
+          thresholdRing.position.copyFrom(
+            origin.add(direction.scale(avoidThresholdCm / 100)),
+          );
+          thresholdRing.rotation.set(Math.PI / 2, pose.headingRad, 0);
+          thresholdRing.setEnabled(true);
+        }
       }
       robotRing.position.set(pose.x, 0.04, pose.z);
       if (followCamera && assembly)
@@ -722,6 +753,7 @@ export async function createRobotWorld(
           rightSpeedPct,
           isColliding,
           distanceCm: sensor ? distance(sensor.instanceId) : null,
+          avoidThresholdCm,
           sensorHeightCm: sensor
             ? Math.round(sensorPosition(sensor.instanceId, "hc-sr04").y * 100)
             : null,
@@ -761,6 +793,12 @@ export async function createRobotWorld(
       }),
       setMap,
       getSelectedObstacleId: () => selectedObstacleId,
+      setAvoidThresholdCm: (thresholdCm) => {
+        avoidThresholdCm =
+          thresholdCm !== null && Number.isFinite(thresholdCm) && thresholdCm > 0
+            ? thresholdCm
+            : null;
+      },
       floorPointAt: (clientX, clientY) => {
         const rect = canvas.getBoundingClientRect();
         const point = floorPointAtCanvas(clientX - rect.left, clientY - rect.top);

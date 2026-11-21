@@ -15,6 +15,10 @@ Branch: `main` working tree, uncommitted (user said "Not yet" to committing). De
 - S7 Shape library: "mejor diseño en la interfaz 3d, quiero que se vean las formas para añadirlas tal como hace tinkercad". Picture tiles for box, wall, cylinder, sphere, cone, pyramid; click places in front of the robot, drag drops at the pointer.
 - S8 Robot placement: "poder seleccionar el robot tambien y moverlo de lugar". Click selects the robot, drag moves its start pose (never onto an obstacle), heading slider, reset returns there.
 
+- S9 Avoid distance visible in 3D (suggestion 1, user: "haz la 1 y la 2"): red ring on the ray at the drive-until threshold; ray turns red while an obstacle is closer; "Esquiva a" telemetry.
+- S10 One-click preset maps (suggestion 2): scenery, empty, slalom, zigzag, corridor.
+- S11 "cuando acabes genera un readme.md que sera usado en el repositorio, en este no te centres mucho en lo tecnico, centrate mas en el objetivo del proyecto (incluye fotos de las interfaces de circuitos, bloques, 3d, etc)"
+
 ## Tasks
 
 | ID | Specs | Route | Status | Evidence |
@@ -25,6 +29,9 @@ Branch: `main` working tree, uncommitted (user said "Not yet" to committing). De
 | T5 | S6 | inline | done | RED->GREEN tests/drive-until.test.ts (6), workbench-avoider runner test; new core instruction drive_until_distance (runner-level) |
 | T6 | S7, S8 | inline | done | RED->GREEN world-map tests (shapes, legacy column, robotStart, collidesAt); WorldDesigner + ShapeIcon; browser: drop cone at pointer, robot drag + heading 90°, below-sensor warning |
 | T7 | S6 | inline | done | fixes found in browser: arena walls 0.75 m < sensor 0.97 m (raised x2), flat hazard bases blocked but invisible to ray (use flame/tank), fixed ±8 m clamp (now wall face − radius), grazing contact froze robot (slide). Avoider: 4 avoids in 60 s, 0 collisions |
+| T8 | S9 | inline | done | RED->GREEN tests/avoid-threshold.test.ts; browser: ring + red ray, "Esquiva a 40 cm" |
+| T9 | S10 | inline | done | RED->GREEN tests/world-map-presets.test.ts (6); browser 20-35 s per map: 0 collisions in all five. Fix found: corner contact froze robot → tangent slide (tests/world.test.ts) |
+| T10 | S11 | inline | done | README.md rewritten (goal-first, Spanish); 5 PNG captures in docs/img via headless Edge CDP script (scratchpad, not committed) |
 | T4 | S1-S5 | inline | done | browser: add wall/box, drag, stretch 8x2.5 m, scenery hidden, range 100/300 cm, collision at 18.6 cm, map restored after reload |
 
 ## Log
@@ -36,3 +43,5 @@ Branch: `main` working tree, uncommitted (user said "Not yet" to committing). De
 - L5 (2026-11-21, user): "veo que si se modifica la distancia del ultrasonico pero no el range de deteccion, necesito que tambien sea esto para poder configurar a que distancia esquiva, ademas mejor diseño en la interfaz 3d, quiero que se vean las formas para añadirlas tal como hace tinkercad, poder seleccionar el robot tambien y moverlo de lugar"
 - L6: User chose "Bloque 'avanzar hasta' (Recomendado)" over a generic if/then block. Also found: Blockly restore() loads a saved program on open, so "Restablecer evasor" now also clears robokan.blocks.workspace.v1.<boardId>.
 - L7: Verified npm test 9 + 98 (107) pass, tsc clean. Not covered by automated tests: Babylon pointer drag, wall scaling, palette drop (browser-checked only). Shapes collide by footprint box; low or pointy parts under the 97 cm sensor are not detected (warning shown). Nothing committed.
+- L8 (2026-11-21, user): "haz la 1 y la 2, cuando acabes genera un readme.md que sera usado en el repositorio, en este no te centres mucho en lo tecnico, centrate mas en el objetivo del proyecto (incluye fotos de las interfaces de circuitos, bloques, 3d, etc)"
+- L9: User committed previous work as 39f9082 on main. This round uncommitted. Checks: 115 Vitest + 9 node tests pass, tsc clean. README states license as pending (no project LICENSE exists).

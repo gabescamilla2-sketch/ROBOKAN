@@ -19,7 +19,11 @@ import { createCircuitProgramAdapter } from "./circuit-program-adapter";
 import { importCircuitWorkbench } from "./import-circuit-workbench";
 import { evaluate, createExecuteHardwareInstruction } from "../modules/circuit";
 import type { RobotWorld } from "../modules/world";
-import { createWorldExample, presetProgramFor } from "./world-example";
+import {
+  avoidThresholdCm,
+  createWorldExample,
+  presetProgramFor,
+} from "./world-example";
 const WorldViewport = lazy(() =>
   import("../modules/world").then((module) => ({
     default: module.WorldViewport,
@@ -147,6 +151,10 @@ function BlocksPage() {
       runner.stop();
     };
   }, [runner]);
+  const avoidThreshold = avoidThresholdCm(blocks);
+  useEffect(() => {
+    worldRef.current?.setAvoidThresholdCm(avoidThreshold);
+  }, [avoidThreshold, isWorldReady]);
   const isActive = runner.status === "running" || runner.status === "paused";
   const issues = validateProgram(blocks);
   const instructions = issues.length === 0 ? generateInstructions(blocks) : [];

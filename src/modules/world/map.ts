@@ -305,3 +305,78 @@ export function parseWorldMap(source: string | null): WorldMap {
     return fallback;
   }
 }
+
+/** One-click arenas for demos; each brings its own obstacles and robot start. */
+export const MAP_PRESET_IDS = [
+  "scenery",
+  "empty",
+  "slalom",
+  "zigzag",
+  "corridor",
+] as const;
+export type MapPresetId = (typeof MAP_PRESET_IDS)[number];
+
+type PresetObstacle = [ObstacleKind, number, number, ObstaclePatch?];
+
+const PRESET_LAYOUTS: Record<
+  Exclude<MapPresetId, "scenery">,
+  { robotStart: RobotStart; obstacles: PresetObstacle[] }
+> = {
+  empty: { robotStart: { x: -5.5, z: -5.5, headingDeg: 0 }, obstacles: [] },
+  // Columns in a zigzag straight ahead of the robot.
+  slalom: {
+    robotStart: { x: 0, z: -7.2, headingDeg: 0 },
+    obstacles: [
+      ["cylinder", 0, -4.2],
+      ["cylinder", -2, -1.2],
+      ["cylinder", 2, -1.2],
+      ["cylinder", 0, 1.8],
+      ["cylinder", -2.5, 5.8],
+      ["cylinder", 2.5, 5.8],
+    ],
+  },
+  // Long walls from alternate sides force the robot to keep turning.
+  zigzag: {
+    robotStart: { x: -6.8, z: -6.8, headingDeg: 0 },
+    obstacles: [
+      ["wall", -3.5, -5.2, { widthM: 0.3, depthM: 7 }],
+      ["wall", 0.5, 5.2, { widthM: 0.3, depthM: 7 }],
+      ["wall", 4.5, -5.2, { widthM: 0.3, depthM: 7 }],
+      ["box", -1.5, 1.5],
+    ],
+  },
+  // A corridor with a box waiting at its end.
+  corridor: {
+    robotStart: { x: 0, z: -7.3, headingDeg: 0 },
+    obstacles: [
+      ["wall", -1.9, -3.5, { widthM: 0.3, depthM: 7.5 }],
+      ["wall", 1.9, -3.5, { widthM: 0.3, depthM: 7.5 }],
+      ["box", 0, 2.5],
+      ["pyramid", -4.5, 0],
+      ["sphere", 4.5, 0],
+    ],
+  },
+};
+
+/** Builds a preset arena, keeping the current ultrasonic range. */
+export function createPresetMap(id: MapPresetId, current: WorldMap): WorldMap {
+  if (id === "scenery")
+    return {
+      ...createDefaultWorldMap(),
+      ultrasonicRangeCm: current.ultrasonicRangeCm,
+    };
+  const layout = PRESET_LAYOUTS[id];
+  let map: WorldMap = {
+    ...createDefaultWorldMap(),
+    showSceneryObstacles: false,
+    ultrasonicRangeCm: current.ultrasonicRangeCm,
+    robotStart: { ...layout.robotStart },
+  };
+  for (const [kind, x, z, size] of layout.obstacles) {
+    const added = addObstacle(map, kind, { x, z });
+    map = size
+      ? updateObstacle(added.map, added.id, { x, z, ...size })
+      : added.map;
+  }
+  return map;
+}

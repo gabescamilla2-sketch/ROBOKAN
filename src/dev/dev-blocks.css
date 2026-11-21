@@ -489,6 +489,19 @@ code {
 .world-range input {
   width: 110px;
 }
+.world-map-select {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.world-map-select select {
+  font-size: 12px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid #d7e3f5;
+  border-radius: 6px;
+  background: white;
+}
 .world-design-toggle {
   font-size: 12px;
   min-height: 34px;
@@ -642,7 +655,7 @@ code {
   margin: 0;
   padding: 14px 16px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 8px;
   border-top: 1px solid #e7edf5;
 }
@@ -655,6 +668,12 @@ code {
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.world-telemetry dd.is-near {
+  color: #c62f26;
+}
+.world-avoid-hint {
+  margin: 0 16px 8px;
 }
 .world-collision {
   background: #fff4df;

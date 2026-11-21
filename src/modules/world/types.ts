@@ -40,6 +40,8 @@ export interface RobotWorld extends WorldApi {
   setMap(map: WorldMap): void;
   /** Selected obstacle id, "robot" for the robot, or null. */
   getSelectedObstacleId(): string | null;
+  /** Marks the program's avoid distance on the ultrasonic ray (null hides it). */
+  setAvoidThresholdCm(thresholdCm: number | null): void;
   /** Arena floor point under a page (client) coordinate, or null off the floor. */
   floorPointAt(
     clientX: number,
@@ -63,6 +65,8 @@ export interface WorldSnapshot {
   rightSpeedPct: number;
   isColliding: boolean;
   distanceCm: number | null;
+  /** Avoid distance shown on the ray (from the program), or null. */
+  avoidThresholdCm: number | null;
   /** Height of the ultrasonic sensor above the floor; lower obstacles are not detected. */
   sensorHeightCm: number | null;
   motorSides: { instanceId: string; side: "left" | "right" }[];

@@ -65,12 +65,34 @@ function advanceStep(
   const dx = x - pose.x;
   const dz = z - pose.z;
   const step = Math.hypot(dx, dz);
-  const slide = (
-    [
-      { x, z: pose.z, along: Math.abs(dx) },
-      { x: pose.x, z, along: Math.abs(dz) },
-    ] as const
-  )
+  // Tangent slide: drop the part of the move that goes into each touched
+  // obstacle (along the contact normal). This also rounds box corners.
+  const tangentSlides = obstacles.flatMap((bounds) => {
+    if (!collidesAt(x, z, [bounds], radiusM)) return [];
+    const closestX = Math.max(bounds.minX, Math.min(pose.x, bounds.maxX));
+    const closestZ = Math.max(bounds.minZ, Math.min(pose.z, bounds.maxZ));
+    const distance = Math.hypot(pose.x - closestX, pose.z - closestZ);
+    if (distance < 1e-9) return [];
+    const normalX = (pose.x - closestX) / distance;
+    const normalZ = (pose.z - closestZ) / distance;
+    const into = dx * normalX + dz * normalZ;
+    if (into >= 0) return [];
+    const slideX = dx - into * normalX;
+    const slideZ = dz - into * normalZ;
+    return [
+      {
+        x: pose.x + slideX,
+        z: pose.z + slideZ,
+        along: Math.hypot(slideX, slideZ),
+      },
+    ];
+  });
+  // Axis slides cover the arena walls, which are limits rather than bounds.
+  const slide = [
+    ...tangentSlides,
+    { x, z: pose.z, along: Math.abs(dx) },
+    { x: pose.x, z, along: Math.abs(dz) },
+  ]
     .filter(
       (candidate) =>
         candidate.along > SLIDE_MIN_FRACTION * step &&

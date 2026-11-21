@@ -158,3 +158,13 @@ it("slides along an obstacle it touches at an angle instead of freezing", () => 
   const stopped = advanceRobot(headOn, 60, 60, 0.1, [wall], 0.4);
   expect(stopped).toEqual(headOn);
 });
+
+it("slides around the corner of an obstacle it touches at an angle", () => {
+  const box = { minX: -0.5, maxX: 0.5, minZ: -0.5, maxZ: 0.5 };
+  // Heading 58° with the box's corner ahead-left: moving along x or z alone
+  // both push into the corner, so only sliding along the contact tangent works.
+  let pose = { x: -1.155, z: -1.313, headingRad: (58 * Math.PI) / 180 };
+  for (let step = 0; step < 60; step++)
+    pose = advanceRobot(pose, 60, 60, 0.1, [box], 0.95);
+  expect(pose.x).toBeGreaterThan(2.5);
+});

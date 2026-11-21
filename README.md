@@ -1,24 +1,90 @@
 # ROBOKAN
 
-Simulador educativo de robotica y electronica en el navegador.
-Bloques con C++ equivalente + circuito 2D + mundo 3D con fisica.
+**Tu primer laboratorio de robótica, gratis y en el navegador.**
 
-Prueba del Rol 2: ejecutar `npm install` y `npm run dev`, y abrir `/blocks.html`. `npm test` ejecuta las pruebas y `npm run build` compila la página de bloques.
+ROBOKAN es una plataforma educativa para que niñas, niños y jóvenes de primaria y secundaria aprendan robótica y electrónica haciendo: conectan un circuito, lo programan con bloques y ven a su robot moverse en un mundo 3D. Todo en español, sin instalar nada y pensado para las computadoras que ya existen en las escuelas.
 
-Ver docs/arquitectura.md y docs/contrato.md
+![Portada de ROBOKAN](docs/img/portada.png)
 
-## Mundo 3D
+## ¿Por qué existe?
 
-Ejecuta `npm install` y `npm run dev`. Abre `/blocks.html?example=motors&world=1` para probar un programa con dos motores y un ultrasónico en la escena local de Babylon.js. Pulsa Ejecutar, Pausar, Reanudar o Detener. Reiniciar robot devuelve su posición inicial.
+En el sur de México la robótica casi no se enseña en las escuelas. Los kits físicos son caros, se rompen, se pierden y requieren a alguien que ya sepa usarlos. ROBOKAN nace en Cancún, durante un hackatón, con una meta concreta: **que cualquier estudiante con una computadora y un navegador pueda construir y programar su primer robot**, y así sembrar el interés por la tecnología en quienes formarán la próxima generación de talento de la región.
 
-El ejemplo avanza, mide distancia, gira y retrocede. Los bloques y el mundo aparecen lado a lado; las pestañas permiten revisar C++ e instrucciones conservando la simulación. Puedes elegir cámara orbital, superior o de seguimiento, mostrar el rayo ultrasónico y la trayectoria, y consultar velocidades y orientación en vivo. Desmarca **Repetir programa** para una sola ejecución con apagado automático al terminar. Al cambiar de pestaña del navegador, el programa se pausa y debes reanudarlo al volver.
+Nuestros principios:
 
-Desde `/circuits.html`, Mundo 3D abre el robot con los componentes y conexiones actuales. El ultrasónico mide obstáculos del entorno por rayos. Los motores requieren alimentación y sus identificadores se muestran en la pantalla de programación. El catálogo es educativo y el movimiento usa cinemática diferencial con colisiones simplificadas.
+- **Gratis y sin cuentas.** No hay registro ni pagos. Los proyectos se guardan en el propio navegador.
+- **En español** y con un lenguaje pensado para estudiantes.
+- **Para equipos modestos.** Funciona en el navegador, sin instalar programas.
+- **Se aprende equivocándose.** Los errores reales de electrónica tienen consecuencias en la simulación, igual que en un laboratorio, pero sin quemar nada de verdad.
 
-El robot utiliza los GLB de la rama `modelos-3d`: chasis y ruedas más los componentes presentes en el circuito. Pulsa **Seguir robot** para ver las piezas de cerca y abre **Componentes 3D del circuito** para consultar sus identificadores. El catálogo incluye los once modelos suministrados; el LM35 tiene representación visual y todavía no tiene instrucciones de lectura de temperatura. Consulta [el catálogo de modelos](src/modules/components/README.md).
+## Cómo se aprende con ROBOKAN
 
-## Desarrollo local
+Un solo robot recorre tres vistas: el circuito, el programa y el mundo. Lo que el estudiante conecta en el circuito es lo que su programa puede usar y lo que el robot tiene en 3D. Si un sensor no está conectado, el programa no puede leerlo, y eso también se aprende.
 
-Instala con `npm ci --ignore-scripts` y ejecuta `npm run dev`. Desde la página principal, selecciona un proyecto y pulsa **Abrir circuito**. También puedes entrar en `/circuit.html` dentro del servidor local.
+### 1. Conecta el circuito
 
-Comprobaciones: `npm test`, `npm run typecheck:circuit`, `npm run format:check` y `npm run build`. La construcción conserva la página principal y genera el circuito y los bloques como entradas separadas en `dist/`. El runtime y el mundo 3D están conectados al circuito mediante el adaptador público. El catálogo eléctrico sigue siendo de desarrollo; los modelos GLB compartidos por el Rol 5 ya están integrados.
+En la mesa de trabajo se colocan placas, sensores y motores y se unen con cables, como en un laboratorio real. El proyecto de inicio, el **evasor de obstáculos**, ya viene armado: un Arduino Uno, un sensor ultrasónico y dos motores listos para funcionar.
+
+![Mesa de trabajo de circuitos con el evasor de obstáculos](docs/img/circuitos.png)
+
+La simulación eléctrica es educativa: si un LED se conecta sin resistencia se quema, si se invierte la alimentación el componente se daña y si falta una tierra común el sensor no responde. Cada error se explica para que el estudiante lo corrija.
+
+### 2. Programa con bloques
+
+Con bloques tipo Scratch el estudiante le dice al robot qué hacer: mover motores, esperar, leer sensores o encender salidas. El evasor trae listo su programa: **avanzar hasta que un obstáculo esté a menos de 40 cm, retroceder un poco, girar y repetir**. Cambiar ese número cambia a qué distancia esquiva el robot.
+
+Junto a los bloques se puede ver el código C++ equivalente de Arduino, para que el paso al hardware real se sienta natural.
+
+![Programación con bloques junto al mundo 3D](docs/img/bloques-y-mundo.png)
+
+### 3. Pruébalo en el mundo 3D
+
+El robot cobra vida en una arena 3D. El sensor ultrasónico mide de verdad la distancia a lo que tiene enfrente: el rayo amarillo muestra lo que "ve", un anillo rojo marca la distancia de esquiva y el rayo se pone rojo cuando un obstáculo está más cerca. Así se entiende *por qué* el robot gira.
+
+![Robot en el mundo 3D con el rayo del sensor y el anillo de la distancia de esquiva](docs/img/mundo-3d.png)
+
+### 4. Diseña tu propio reto
+
+Con **Diseñar mapa** cada estudiante crea su arena, como en una herramienta de modelado 3D: elige formas (caja, pared, cilindro, esfera, cono, pirámide), las coloca, las estira y mueve el robot a donde quiera empezar. También hay mapas listos con un clic, como el slalom de columnas, el zigzag de paredes o el pasillo, ideales para una clase o una demostración.
+
+![Diseñador de mapas con biblioteca de formas](docs/img/disenar-mapa.png)
+
+## Proyecto de inicio: el evasor de obstáculos
+
+Al pulsar **Comenzar a crear** se abre el evasor completo: circuito conectado y programa precargado. Basta con abrir **Mundo 3D** y pulsar **Ejecutar** para ver al robot recorrer la arena y esquivar lo que encuentra. Si alguien modificó el proyecto, el botón **Restablecer evasor** lo devuelve a su estado inicial.
+
+Desde ahí, el camino de aprendizaje es natural:
+
+1. **Observa:** ejecuta el robot tal como viene.
+2. **Modifica:** cambia la velocidad, la distancia de esquiva o el giro.
+3. **Conecta:** rehace el cableado y descubre qué pasa si algo falta.
+4. **Diseña:** crea tu propio mapa y reta al robot.
+
+## Lo que viene
+
+ROBOKAN está en desarrollo. Las siguientes metas del equipo son:
+
+- **Misión detector de fuga de gas**: un sensor MQ-2, un zumbador y un LED que avisan de una fuga, un problema real en los hogares mexicanos que usan gas LP. El sensor de gas ya funciona en el mundo 3D; falta la misión guiada.
+- **Robot seguidor de líneas** como segunda plantilla.
+- **Más misiones guiadas** con metas, niveles de ayuda y retroalimentación.
+- **Raspberry Pi** con soporte completo (hoy el soporte principal es para Arduino Uno).
+- **Uso sin conexión** para escuelas con internet limitado.
+
+## Pruébalo
+
+Necesitas [Node.js](https://nodejs.org/) 22.12+, 24 o 26+.
+
+```bash
+npm ci --ignore-scripts
+npm run dev
+```
+
+Abre la dirección que muestre la terminal (normalmente `http://127.0.0.1:5173`) y pulsa **Comenzar a crear**.
+
+Para conocer el funcionamiento interno (arquitectura, contratos entre módulos y pruebas) consulta [CONTEXTO_PROYECTO.md](CONTEXTO_PROYECTO.md) y la carpeta [docs/](docs/).
+
+## Equipo y créditos
+
+ROBOKAN es un proyecto de un equipo de cinco personas desde Cancún, México, creado para un hackatón con la ilusión de llevar la robótica a más salones de clase.
+
+Los modelos 3D, tipografías y recursos de terceros se registran con su origen y licencia en [ATTRIBUTIONS.md](ATTRIBUTIONS.md). La licencia del código del proyecto está pendiente de definir por el equipo.

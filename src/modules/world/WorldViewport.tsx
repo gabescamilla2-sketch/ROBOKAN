@@ -4,17 +4,20 @@ import type { RobotWorld, WorldSnapshot } from "./types";
 import { createRobotWorld } from "./create-world";
 import {
   DEFAULT_ROBOT_START,
+  MAP_PRESET_IDS,
   MAX_OBSTACLES,
   OBSTACLE_KINDS,
   ULTRASONIC_RANGE_CM,
   WORLD_MAP_STORAGE_KEY,
   addObstacle,
   clearObstacles,
+  createPresetMap,
   parseWorldMap,
   removeObstacle,
   serializeWorldMap,
   setRobotStart,
   updateObstacle,
+  type MapPresetId,
   type ObstacleKind,
   type WorldMap,
 } from "./map";
@@ -107,6 +110,16 @@ export function WorldViewport({
     };
   }, [robot, generation]);
   const applyMap = (next: WorldMap) => worldRef.current?.setMap(next);
+  const loadPreset = (id: MapPresetId) => {
+    const world = worldRef.current;
+    if (!world) return;
+    if (worldMap.obstacles.length > 0 && !window.confirm(labels.confirmPreset))
+      return;
+    world.setMap(createPresetMap(id, worldMap));
+    world.selectObstacle(null);
+    // Put the robot on the map's start and clear the old trajectory.
+    world.reset();
+  };
   const placeShape = (kind: ObstacleKind, at: { x: number; z: number }) => {
     const world = worldRef.current;
     if (!world || worldMap.obstacles.length >= MAX_OBSTACLES) return;
@@ -188,6 +201,27 @@ export function WorldViewport({
             }
           />
           <output>{worldMap.ultrasonicRangeCm} cm</output>
+        </label>
+        <label className="world-map-select">
+          {labels.map}
+          <select
+            value=""
+            disabled={worldUnavailable}
+            onChange={(event) => {
+              const id = event.target.value as MapPresetId;
+              if ((MAP_PRESET_IDS as readonly string[]).includes(id))
+                loadPreset(id);
+            }}
+          >
+            <option value="" disabled>
+              {labels.mapPlaceholder}
+            </option>
+            {MAP_PRESET_IDS.map((id) => (
+              <option key={id} value={id}>
+                {labels.presets[id]}
+              </option>
+            ))}
+          </select>
         </label>
         <button
           type="button"
@@ -278,10 +312,26 @@ export function WorldViewport({
             </div>
             <div>
               <dt>{labels.ultrasonic}</dt>
-              <dd>
+              <dd
+                className={
+                  snapshot.distanceCm !== null &&
+                  snapshot.avoidThresholdCm !== null &&
+                  snapshot.distanceCm < snapshot.avoidThresholdCm
+                    ? "is-near"
+                    : undefined
+                }
+              >
                 {snapshot.distanceCm === null
                   ? "—"
                   : `${snapshot.distanceCm.toFixed(1)} cm`}
+              </dd>
+            </div>
+            <div>
+              <dt>{labels.avoidAt}</dt>
+              <dd>
+                {snapshot.avoidThresholdCm === null
+                  ? "—"
+                  : `${snapshot.avoidThresholdCm} cm`}
               </dd>
             </div>
             <div>
@@ -289,6 +339,9 @@ export function WorldViewport({
               <dd>{snapshot.headingDeg.toFixed(0)}°</dd>
             </div>
           </dl>
+          {snapshot.avoidThresholdCm !== null && (
+            <p className="code-note world-avoid-hint">{labels.avoidHint}</p>
+          )}
           <p
             className={snapshot.isColliding ? "world-collision" : "code-note"}
             role="status"
