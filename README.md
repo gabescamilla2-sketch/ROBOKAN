@@ -47,7 +47,7 @@ El robot cobra vida en una arena 3D. El sensor ultrasónico mide de verdad la di
 
 ### 4. Diseña tu propio reto
 
-Con **Diseñar mapa** cada estudiante crea su arena, como en una herramienta de modelado 3D: elige formas (caja, pared, cilindro, esfera, cono, pirámide), las coloca, las estira y mueve el robot a donde quiera empezar. También hay mapas listos con un clic, como el slalom de columnas, el zigzag de paredes o el pasillo, ideales para una clase o una demostración.
+Con **Diseñar mapa** cada estudiante crea su arena, como en una herramienta de modelado 3D: elige formas (caja, pared, cilindro, esfera, cono, pirámide), las coloca, las estira y mueve el robot a donde quiera empezar. También hay mapas listos con un clic, como el de columnas, el zigzag de paredes o el pasillo, ideales para una clase o una demostración.
 
 ![Diseñador de mapas con biblioteca de formas](docs/img/disenar-mapa.png)
 
@@ -89,4 +89,4 @@ Para conocer el funcionamiento interno (arquitectura y contratos entre módulos)
 
 ROBOKAN es un proyecto de un equipo de cinco personas desde Cancún, México, creado para un hackatón con la ilusión de llevar la robótica a más salones de clase.
 
-Los modelos 3D, tipografías y recursos de terceros se registran con su origen y licencia en [ATTRIBUTIONS.md](ATTRIBUTIONS.md). La licencia del código del proyecto está pendiente de definir por el equipo.
+Los modelos 3D, tipografías y recursos de terceros se registran con su origen y licencia en [ATTRIBUTIONS.md](ATTRIBUTIONS.md). La licencia del código del proyecto está pensado para funcionar como un OpenSource con posibilidad de recibir donativos
