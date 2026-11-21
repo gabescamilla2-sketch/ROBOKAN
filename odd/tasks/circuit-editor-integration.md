@@ -37,8 +37,8 @@ Checks: Vitest circuit suite, strict TypeScript, Vite multipage build and browse
 
 ## Tasks
 - T1 [S2,S4,S5] inline; complete; commit `d4f4a84`; shared contracts/events/IDs and React/Vite multipage harness. Risk: item5 dependencies; independent final verifier required.
-- T2 [S1,S3,S4] inline; complete, commit pending; breadboard nets, actual voltage/signal evaluation and bound runtime API. Risk: item3 existing netlist/rule consumers; preserve default legacy behavior and add regressions.
-- T3 [S1,S3,S4] inline; pending; graph interactions, pin geometry, wires, safe serialization and ghost connections with focused tests. Risk: item3 shared graph behavior.
+- T2 [S1,S3,S4] inline; complete; commit `b5ec96d`; breadboard nets, actual voltage/signal evaluation and bound runtime API. Risk: item3 existing netlist/rule consumers; preserve default legacy behavior and add regressions.
+- T3 [S1,S3,S4] inline; complete, commit pending; graph interactions, pin geometry, wires, safe serialization and ghost connections with focused tests. Risk: item3 shared graph behavior.
 - T4 [S1,S3,S5] inline; pending; controlled React SVG editor and development catalog/page, responsive interactions. Risk: item5 browser build/runtime.
 - T5 [S2,S5] inline; pending; connect existing project chooser to circuit page without redesigning home; document shared contracts and model limits. Risk: item3 home navigation; verify old chooser behavior.
 - T6 [S1-S5] inline verification plus independent verifier; pending; focused/suite/typecheck/build/browser checks, resolve observed blockers and record remaining external integrations honestly.
@@ -52,3 +52,5 @@ Checks: Vitest circuit suite, strict TypeScript, Vite multipage build and browse
 - L5. T1 RED2 shared-function tests before implementation, GREEN33/33 and strict typecheck/build PASS. React19.3.1 and Vite8.3.8 installed with scripts disabled. Multipage build preserves index.html and copies existing static assets; existing classic-script and dynamic-URL warnings retained for browser verification. Core contracts add canonical pin/state/graph types, scoped events and persisted ID watermarks.
 
 - L6. T2 RED4 API/breadboard tests, GREEN37/37 and strict typecheck PASS. Runtime evaluate uses explicit drivers (absent output floating; LOW0/HIGH1 preserved); legacy evaluateCircuitRules keeps static behavior when its optional override is omitted. Board rails propagate through breadboard banks/rails; sensor outputs require powered state. API reads caller-owned graph/catalog providers, with no stored robot clone. Existing native escalation remains bound; no new review lifecycle initiated.
+
+- L7. T3 RED3 model tests, GREEN40/40 and typecheck PASS. Immutable graph editing retains ID watermarks; version1 serialization validates catalog membership, pin refs, IDs, positions, rotations, colors, duplicates and bounded file size before replacement. Rotated pin geometry, orthogonal paths and symmetric ghost-wire matching covered. No world/runtime/catalog-owner module modified.
