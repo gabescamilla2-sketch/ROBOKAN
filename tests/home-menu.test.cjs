@@ -2,35 +2,54 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
+const { JSDOM } = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const code = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-function setup() {
-  const element = (dataset = {}) => ({ dataset, events: {}, attrs: {}, textContent: '', addEventListener(n, fn) { this.events[n] = fn; }, setAttribute(n, value) { this.attrs[n] = value; } });
-  const dialog = Object.assign(element(), { open: false, showModal() { this.open = true; }, close() { this.open = false; }, getBoundingClientRect() { return { left: 10, top: 10, right: 100, bottom: 100 }; } });
-  const options = [...html.matchAll(/data-project="([^"]+)" data-title="([^"]+)"/g)].map(match => element({ project: match[1], title: match[2] }));
-  const openers = [...html.matchAll(/data-open-start/g)].map(() => element());
-  const closers = [element()];
-  const status = element();
-  const document = { querySelector(s) { return s === '#start-dialog' ? dialog : status; }, querySelectorAll(s) { return s === '[data-open-start]' ? openers : s === '[data-project]' ? options : closers; } };
-  vm.runInNewContext(code, { document });
-  return { dialog, options, openers, closers, status };
+function setup(t) {
+  const dom = new JSDOM(html, { url: 'http://localhost/', runScripts: 'outside-only' });
+  const observers = [];
+  const NativeObserver = dom.window.MutationObserver;
+  dom.window.MutationObserver = class extends NativeObserver {
+    constructor(callback) { super(callback); observers.push(this); }
+  };
+  t.after(() => { observers.forEach(observer => observer.disconnect()); dom.window.close(); });
+  const dialog = dom.window.document.querySelector('#start-dialog');
+  dialog.close = () => dialog.removeAttribute('open');
+  dialog.getBoundingClientRect = () => ({ left: 10, top: 10, right: 100, bottom: 100 });
+  dom.window.eval(code);
+  return dom.window;
 }
-test('both existing start buttons open the robot menu and close returns home', () => {
-  const s = setup(); assert.equal(s.openers.length, 2);
-  for (const opener of s.openers) { opener.events.click(); assert.equal(s.dialog.open, true); s.closers[0].events.click(); assert.equal(s.dialog.open, false); }
+test('start button targets the new circuit page', () => {
+  assert.match(code, /window\.location\.href\s*=\s*'circuits\.html'/);
+  assert.ok(html.includes('data-open-start'));
+  assert.ok(fs.existsSync(path.join(root, 'circuits.html')));
 });
-for (const id of ['avoider', 'line-follower', 'blank']) {
-  test('select project through its button: ' + id, () => {
-    const s = setup(); const selected = s.options.find(option => option.dataset.project === id); assert.ok(selected);
-    s.options[0].events.click(); selected.events.click();
-    assert.equal(selected.attrs['aria-pressed'], 'true');
-    assert.equal(s.options.filter(option => option.attrs['aria-pressed'] === 'true').length, 1);
-    assert.equal(s.status.textContent, 'Seleccionaste: ' + selected.dataset.title + '.');
-  });
-}
-test('existing backdrop behavior closes only outside the dialog', () => {
-  const s = setup(); s.openers[0].events.click(); s.dialog.events.click({target:s.dialog,clientX:50,clientY:50}); assert.equal(s.dialog.open,true);
-  s.dialog.events.click({target:s.dialog,clientX:5,clientY:5}); assert.equal(s.dialog.open,false);
+test('home script initializes with browser APIs', t => {
+  const window = setup(t);
+  assert.ok(window.document.querySelector('[data-open-start]'));
+});
+test('arrow keys select and focus the next language tab', t => {
+  const window = setup(t);
+  const tabs = [...window.document.querySelectorAll('[role="tab"]')];
+  let clicked = false;
+  tabs[1].addEventListener('click', () => { clicked = true; });
+  tabs[0].dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+  assert.equal(clicked, true);
+  assert.equal(window.document.activeElement, tabs[1]);
+});
+test('arrow keys wrap to the last tab', t => {
+  const window = setup(t);
+  const tabs = [...window.document.querySelectorAll('[role="tab"]')];
+  tabs[0].dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+  assert.equal(window.document.activeElement, tabs.at(-1));
+});
+test('mutation observer translates generated animation controls', async t => {
+  const window = setup(t);
+  const button = window.document.createElement('button');
+  button.className = 'mo-mq__pause';
+  button.setAttribute('aria-label', 'Pause');
+  window.document.body.append(button);
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  assert.equal(button.getAttribute('aria-label'), 'Pausar animación');
 });
