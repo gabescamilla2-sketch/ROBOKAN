@@ -1,0 +1,11 @@
+{
+ "page": "index.html",
+ "url": null,
+ "root": null,
+ "kind": "software",
+ "category": "laboratorio de robótica para estudiantes",
+ "primary": "Comenzar a crear",
+ "rounds": 3,
+ "start": "2026-11-21T06:05:46.553Z",
+ "by": "gate.mjs --start"
+}

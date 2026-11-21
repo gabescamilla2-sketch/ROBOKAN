@@ -1,0 +1,38 @@
+GATE: OPEN 11 (rounds used up)
+
+Homepage update — C:/Users/Gabriell/Downloads/ROBOKAN
+Kind: software; educational robotics. Existing Spanish project vocabulary.
+Design: user-supplied reference composition overrides the previous centred layout. A navy project panel sits on the left; a headline and the supplied robot occupy separate rows on the right. Official navy, blue, turquoise, yellow and sky-white palette; Geist / Geist Mono. Real circuit and blocks captures remain complete. No stock art, invented product UI, prices, claims or assumed facts.
+Motion: one entrance, subtle robot float with pause/resume, native hover/press feedback, existing word-highlight moment. Reduced motion disables animation and hides its unnecessary pause control. No shader or scene was added.
+Brand: supplied logotipo.png and robokan-isotipo.svg are copied to assets/home and used only by the homepage. The robot is copied unchanged. Original files retain their hashes. The giant footer wordmark is removed; its whitespace remains intentionally reserved.
+
+Verification:
+- npm test: 9 homepage tests and 69 Vitest tests passed (78 total).
+- npm run build: passed. Existing blocks bundle size warning remains outside this homepage change.
+- Browser checks: 1440, 1024, 820, 768, 390 and 320 px. All images loaded, no horizontal overflow, robot painted bounds stay inside the panel without overlapping text, gallery images use contain, tabs and mobile menu work, footer reserve remains empty, pause/resume work. Reduced-motion check passed. No runtime exceptions. Evidence: reference-browser-qa.json and final-reference-*.png.
+- 68 protected source, editor and original asset files are SHA256-identical to the pre-change snapshot.
+- Built index.html matches source; all four new homepage brand/robot/share assets are packaged.
+- Final taste gate: 11 open findings, 17 nonblocking warnings, no waivers. Current gate.json contains the automated result. Do not interpret the prior design's PASS as this design's result.
+- Separate performance audit was not rerun for this reference-led iteration.
+- Native risk assessment unavailable: untracked assets require a canonical inventory declaration. No review approval is claimed.
+- Engram save and summary failed with unknown_project; this local report preserves the outcome.
+
+Open taste findings and rationale:
+1. spill — pause control compared against the robot image as if the image were its containing panel. The button and image are siblings; browser geometry confirms both stay inside the actual hero panel.
+2. hero-screen — hero is 978 px on a 900 px screen. Natural height is intentional so supplied artwork and copy remain whole.
+3. section-height — laboratory is 1193 px instead of a whole number of screens. Natural height preserves complete interface captures.
+4. section-height — footer begins at 2171 px instead of a screen-grid boundary. Consequence of natural-height preceding sections.
+5. one-section/neighbour — sections share a viewport during scrolling. No fixed screen snapping is imposed.
+6. one-section — the rounded reference panel has its own white ground. The user explicitly requested that composition.
+7. container-edges — hero uses the reference panel rather than the kit's .hero-text template.
+8. container-edges — footer has an explicit empty reserve between the call and directory. The user explicitly requested preserved space.
+9. container-edges — hero headline occupies the right column, following the supplied reference.
+10. edge-left — laboratory introduction occupies the second column alongside its heading.
+11. hero-fold — same natural-height condition as hero-screen; no artwork is clipped.
+The gate's structural template rules conflict with the requested reference layout. Focus contrast, button consistency, duplicate mobile actions, native entrance registration and mobile overflow findings from earlier rounds were corrected. No remaining finding was hidden or marked as passing.
+
+Nonblocking warnings retained: fold-card (natural scrolling), scroll-reveal (existing dealt word-highlight), button sizing (responsive contexts), copy-buttons/nav-labels (existing Spanish labels), section-gaps (natural heights), label-centre and related template alignment diagnostics. The full checker report is under gate/ and gate.json. No licence credits, stand-ins, forms, contact details or canonical domain assumptions were introduced.
+
+Files: index.html, app.js, assets/home/home.css, assets/home/brand-logo.png, assets/home/brand-mark.svg, assets/home/robot.webp, assets/home/share.jpg, tests/home-menu.test.cjs.
+No circuit or blocks source, dependency, configuration, persisted format, public contract or remote service was changed. No commit, push or publication was performed.
+Risk: none.
