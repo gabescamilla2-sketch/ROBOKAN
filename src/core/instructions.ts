@@ -9,7 +9,9 @@ export type Instruction =
       echoPinName: string;
       resultId: string;
     }
+  | { op: "sensor_read"; instanceId: string; resultId: string }
   | { op: "digital_write"; pinName: string; digitalValue: 0 | 1 }
+  | { op: "servo_write"; instanceId: string; angleDeg: number }
   | {
       op: "buzzer_write";
       instanceId: string;

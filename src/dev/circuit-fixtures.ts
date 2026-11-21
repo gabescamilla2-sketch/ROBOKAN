@@ -1,4 +1,5 @@
 import type { ComponentSpec, PinType, RobotDefinition, Wire } from "../core";
+import { getComponentModel } from "../modules/components";
 function makeSpec(
   specId: string,
   category: ComponentSpec["category"],
@@ -7,6 +8,19 @@ function makeSpec(
   height = 110,
   supplyVoltageV = 5,
 ): ComponentSpec {
+  const sensorKinds: Record<string, ComponentSpec["sensorKind"]> = {
+    "hc-sr04": "ultrasonic",
+    "flame-sensor": "flame",
+    "mq2-gas-sensor": "gas",
+    "ir-line-sensor": "infrared",
+    lm35: "temperature",
+  };
+  const actuatorKinds: Record<string, ComponentSpec["actuatorKind"]> = {
+    "dc-motor": "motor",
+    "servo-sg90": "servo",
+    led: "led",
+    buzzer: "buzzer",
+  };
   return {
     specId,
     category,
@@ -14,8 +28,10 @@ function makeSpec(
     supplyVoltageV,
     maxVoltageV: supplyVoltageV || 50,
     svgPath: "",
-    modelPath: "",
+    modelPath: getComponentModel(specId)?.url ?? "",
     behaviorKind: specId,
+    sensorKind: sensorKinds[specId],
+    actuatorKind: actuatorKinds[specId],
     svgSize: { width, height },
     pins: names.map(([pinName, pinType], index) => ({
       pinName,
@@ -56,12 +72,12 @@ arduino.pins = [
 ];
 const pi = makeSpec("raspberry-pi-4", "board", [], 340, 190, 3.3);
 pi.pins = [
-  ...Array.from({ length: 26 }, (_, i) => ({
-    pinName: `GPIO${i + 2}`,
+  ...[17, 22, 23, 24, 27].map((gpio, i) => ({
+    pinName: `GPIO${gpio}`,
     pinType: "digital_io" as const,
     maxVoltageV: 3.3,
-    svgPosition: { x: 14 + (i % 13) * 26, y: i < 13 ? 8 : 182 },
-    labelKey: `GPIO${i + 2}`,
+    svgPosition: { x: 14 + i * 26, y: 8 },
+    labelKey: `GPIO${gpio}`,
   })),
   ...[
     "5V_1",
@@ -127,6 +143,7 @@ export const circuitSpecs: readonly ComponentSpec[] = [
     ["DOUT", "digital_out"],
   ]),
   sensor("ir-line-sensor", [["OUT", "digital_out"]]),
+  sensor("lm35", [["OUT", "analog_in"]]),
   makeSpec(
     "led",
     "actuator",

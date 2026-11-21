@@ -25,6 +25,12 @@ export {
   createCircuitApi,
   publishCircuitChanges,
 } from "./api";
+export {
+  createExecuteHardwareInstruction,
+  type CircuitWorldApi,
+  type ExecuteHardwareDependencies,
+  type WorldActuatorCommand,
+} from "./hardware-adapter";
 export { breadboardConnections } from "./breadboard";
 export {
   addComponent,

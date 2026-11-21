@@ -1,4 +1,7 @@
 import { componentTypes, artwork } from './circuits-art.js';
+import { importCircuitWorkbench } from './src/dev/import-circuit-workbench.ts';
+import { circuitSpecs } from './src/dev/circuit-fixtures.ts';
+import { evaluate } from './src/modules/circuit/api.ts';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#circuit-canvas');
@@ -24,7 +27,9 @@ let tool = 'select';
 let zoom = 1;
 const viewCenter = {x:550,y:375};
 let drag = null;
+let simulationRunning = false;
 let savedSnapshot = null;
+let scaleEditBefore = null;
 const history = [];
 const future = [];
 const storageKey = 'robokan.circuit-editor.v1';
@@ -40,12 +45,14 @@ function validateProject(value) {
   if (!value || !Array.isArray(value.components) || !Array.isArray(value.wires) || value.components.length > 60 || value.wires.length > 200) return false;
   const ids = new Set();
   for (const component of value.components) {
-    if (!component || typeof component.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(component.id) || ids.has(component.id) || !Object.hasOwn(componentTypes, component.type) || !Number.isFinite(component.x) || !Number.isFinite(component.y) || component.x < 0 || component.y < 0 || component.x > 1100-componentTypes[component.type].width || component.y > 750-componentTypes[component.type].height-35) return false;
+    const scale = component?.scale ?? 1;
+    if (!component || typeof component.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(component.id) || ids.has(component.id) || !Object.hasOwn(componentTypes, component.type) || !Number.isFinite(component.x) || !Number.isFinite(component.y) || !Number.isFinite(scale) || scale < 0.5 || scale > 1.5 || component.x < 0 || component.y < 0 || component.x > 1100-componentTypes[component.type].width*scale || component.y > 750-componentTypes[component.type].height*scale-35) return false;
     ids.add(component.id);
   }
   const wireIds = new Set();
   for (const wire of value.wires) {
     if (!wire || typeof wire.id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(wire.id) || wireIds.has(wire.id) || !colors.some(color => color.value === wire.color)) return false;
+    if (wire.bends !== undefined && (!Array.isArray(wire.bends) || wire.bends.length > 40 || wire.bends.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)))) return false;
     wireIds.add(wire.id);
     for (const endpoint of [wire.from, wire.to]) {
       const component = value.components.find(item => item.id === endpoint?.component);
@@ -60,6 +67,11 @@ try {
   const saved = localStorage.getItem(storageKey);
   if (saved) {
     const parsed = JSON.parse(saved);
+    for(const wire of parsed.wires??[]) for(const endpoint of [wire.from,wire.to]) {
+      const component=parsed.components?.find(item=>item.id===endpoint.component);
+      if(component?.type==='led') endpoint.pin={'Ánodo (+)':'ANODE','Cátodo (−)':'CATHODE'}[endpoint.pin]??endpoint.pin;
+      if(component?.type==='resistor') endpoint.pin={'1':'PIN_A','2':'PIN_B'}[endpoint.pin]??endpoint.pin;
+    }
     if (validateProject(parsed)) { state = parsed; savedSnapshot = snapshot(); status('Proyecto recuperado de este navegador'); }
     else status('El proyecto guardado no es compatible. Se abrió el circuito de inicio.');
   }
@@ -84,7 +96,8 @@ function point(endpoint) {
   const component = state.components.find(item => item.id === endpoint.component);
   const model = componentTypes[component.type];
   const pin = model.pins.find(item => item.name === endpoint.pin);
-  return {x:component.x+pin.x,y:component.y+pin.y,direction:pin.y < model.height/2 ? -1 : 1,component,model};
+  const scale=component.scale??1;
+  return {x:component.x+pin.x*scale,y:component.y+pin.y*scale,direction:pin.y < model.height/2 ? -1 : 1,component,model};
 }
 
 function samePin(first, second) { return first.component === second.component && first.pin === second.pin; }
@@ -106,43 +119,57 @@ function roundedPath(points, radius = 12) {
 
 function cablePath(wire,index) {
   const a=point(wire.from), b=point(wire.to);
+  return roundedPath([a,...cableBends(wire,index),b]);
+}
+
+function cableBends(wire,index) {
+  if (Array.isArray(wire.bends)) return wire.bends;
+  const a=point(wire.from), b=point(wire.to);
   const lane=index%7;
   const startY=a.y+a.direction*(40+lane*13);
   const endY=b.y+b.direction*(36+lane*13);
   const left=a.component.x < b.component.x ? a : b;
   const right=left===a ? b : a;
-  let middle=(left.component.x+left.model.width+right.component.x)/2+lane*12-18;
-  if (a.component.id===b.component.id) middle=a.component.x+a.model.width+35+lane*12;
-  return roundedPath([a,{x:a.x,y:startY},{x:middle,y:startY},{x:middle,y:endY},{x:b.x,y:endY},b]);
+  let middle=(left.component.x+left.model.width*(left.component.scale??1)+right.component.x)/2+lane*12-18;
+  if (a.component.id===b.component.id) middle=a.component.x+a.model.width*(a.component.scale??1)+35+lane*12;
+  return [{x:a.x,y:startY},{x:middle,y:startY},{x:middle,y:endY},{x:b.x,y:endY}];
 }
 
 function renderComponents() {
   $('#components-layer').innerHTML=state.components.map(component => {
     const model=componentTypes[component.type];
-    const canonicalType = { uno:'arduino-uno', ultrasonic:'hc-sr04', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard' }[component.type];
+    const canonicalType = { uno:'arduino-uno', pi:'raspberry-pi-4', ultrasonic:'hc-sr04', flame:'flame-sensor', gas:'mq2-gas-sensor', infrared:'ir-line-sensor', lm35:'lm35', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard', motor:'dc-motor', buzzer:'buzzer', l298n:'motor-driver-l298n', battery:'battery-9v' }[component.type];
     const canonicalId = canonicalType + ':' + /-([1-9]\d*)$/.exec(component.id)?.[1];
     const electricalStatus = programComponentStates[canonicalId];
     const ledOn = component.type === 'led' && electricalStatus === 'ok';
-    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${component.type === 'uno' ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g>${ledOn ? `<ellipse class="program-led-glow" cx="45" cy="36" rx="28" ry="30" fill="#F16C75" opacity=".65" pointer-events="none"/>` : ''}${electricalStatus ? `<text class="component-program-status" x="0" y="${model.height+25}">${electricalStatus === 'ok' ? 'Activo' : electricalStatus === 'burned' ? 'Fallo eléctrico' : 'Sin alimentación'}</text>` : ''}<text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
+    const scale=component.scale??1;
+    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y}) scale(${scale})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${['uno','pi'].includes(component.type) ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g>${ledOn ? `<ellipse class="program-led-glow" cx="45" cy="36" rx="28" ry="30" fill="#F16C75" opacity=".65" pointer-events="none"/>` : ''}${electricalStatus ? `<text class="component-program-status" x="0" y="${model.height+25}">${electricalStatus === 'ok' ? 'Activo' : electricalStatus === 'burned' ? 'Fallo eléctrico' : 'Sin alimentación'}</text>` : ''}<text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
   }).join('');
   $('#pins-layer').innerHTML=state.components.map(component => componentTypes[component.type].pins.map(pin => {
     const endpoint={component:component.id,pin:pin.name};
     const name=escapeText(pin.name);
-    return `<g transform="translate(${component.x+pin.x} ${component.y+pin.y})"><circle class="pin-center" r="1.6"/><circle class="pin${pending && samePin(pending,endpoint)?' pending':''}" r="${component.type==='breadboard'?4:6}" data-pin="${name}" data-owner="${component.id}" role="button" tabindex="${component.type==='breadboard'&&pin.name!=='a1'?'-1':'0'}" aria-label="${componentTypes[component.type].name}: pin ${name}${component.type==='breadboard'?'. Usa las flechas para navegar.':''}"><title>${name}</title></circle></g>`;
-  }).join('')).join('');
+    const scale=component.scale??1;
+    return `<g transform="translate(${component.x+pin.x*scale} ${component.y+pin.y*scale})"><circle class="pin-center" r="1.6"/><circle class="pin${pending && samePin(pending,endpoint)?' pending':''}" r="${component.type==='breadboard'?4:6}" data-pin="${name}" data-owner="${component.id}" role="button" tabindex="${component.type==='breadboard'&&pin.name!=='a1'?'-1':'0'}" aria-label="${componentTypes[component.type].name}: pin ${name}${component.type==='breadboard'?'. Usa las flechas para navegar.':''}"><title>${name}</title></circle></g>`;
+  }).join('')).join('')+state.wires.map((wire,index)=>{
+    const ends=['from','to'].map(end=>{const p=point(wire[end]),active=selection?.kind==='wire'&&selection.id===wire.id;return `<circle class="wire-end-handle" cx="${p.x}" cy="${p.y}" r="16" fill="transparent" stroke="${active?wire.color:'transparent'}" stroke-width="2" style="cursor:grab" data-wire-end="${end}" data-wire-id="${wire.id}" aria-label="Arrastrar extremo del cable ${escapeText(wire[end].pin)}"/>`;}).join('');
+    if(selection?.kind!=='wire'||selection.id!==wire.id)return ends;
+    const bends=cableBends(wire,index).map((p,bend)=>`<g class="wire-bend-handle" data-wire-bend="${bend}" data-wire-id="${wire.id}" role="button" tabindex="0" aria-label="Mover curva del cable"><circle cx="${p.x}" cy="${p.y}" r="14" fill="transparent" style="cursor:move"/><circle cx="${p.x}" cy="${p.y}" r="6" fill="white" stroke="#2878F0" stroke-width="2" pointer-events="none"/></g>`).join('');
+    return ends+bends;
+  }).join('');
 }
 
 function renderWires() {
   $('#wires-layer').innerHTML=state.wires.map((wire,index) => {
     const path=cablePath(wire,index), a=point(wire.from), b=point(wire.to);
-    return `<g class="cable${selection?.id===wire.id?' is-selected':''}" data-wire="${wire.id}" role="button" tabindex="0" aria-label="Cable ${escapeText(wire.from.pin)} a ${escapeText(wire.to.pin)}"><title>${escapeText(wire.from.pin)} → ${escapeText(wire.to.pin)}</title><path class="cable-hit" d="${path}"/><path class="cable-outline" d="${path}"/><path class="cable-body" d="${path}" stroke="${wire.color}"/><path class="cable-highlight" d="${path}"/><circle class="wire-terminal" cx="${a.x}" cy="${a.y}" r="3" stroke="${wire.color}"/><circle class="wire-terminal" cx="${b.x}" cy="${b.y}" r="3" stroke="${wire.color}"/></g>`;
+    const terminalRadius=selection?.id===wire.id?8:3;
+    return `<g class="cable${selection?.id===wire.id?' is-selected':''}" data-wire="${wire.id}" role="button" tabindex="0" aria-label="Cable ${escapeText(wire.from.pin)} a ${escapeText(wire.to.pin)}. Selecciónalo para acomodar sus curvas o arrastrar sus extremos"><title>${escapeText(wire.from.pin)} → ${escapeText(wire.to.pin)} · selecciona para acomodar sus curvas</title><path class="cable-hit" d="${path}"/><path class="cable-outline" d="${path}"/><path class="cable-body" d="${path}" stroke="${wire.color}"/><path class="cable-highlight" d="${path}"/><circle class="wire-terminal" cx="${a.x}" cy="${a.y}" r="${terminalRadius}" stroke="${wire.color}"/><circle class="wire-terminal" cx="${b.x}" cy="${b.y}" r="${terminalRadius}" stroke="${wire.color}"/></g>`;
   }).join('');
 }
 
 function renderInspector() {
   const component=selection?.kind==='component' ? state.components.find(item=>item.id===selection.id) : null;
   $('#selection-heading').textContent=component ? componentTypes[component.type].name : 'Conexiones';
-  $('#selection-details').textContent=component ? `${componentTypes[component.type].model} · ${componentTypes[component.type].pins.length} pines. Arrastra para mover o usa las flechas del teclado.` : '';
+  $('#selection-details').innerHTML=component ? `<p>${escapeText(componentTypes[component.type].model)} · ${componentTypes[component.type].pins.length} pines. Arrastra para mover o usa las flechas.</p><label class="component-scale-control" for="component-scale">Tamaño <output id="component-scale-value">${Math.round((component.scale??1)*100)}%</output><input id="component-scale" type="range" min="0.5" max="1.5" step="0.05" value="${component.scale??1}" aria-label="Tamaño de ${escapeText(componentTypes[component.type].name)}"></label>` : '';
   $('#wire-count').textContent=state.wires.length;
   const wires=component ? state.wires.filter(wire=>wire.from.component===component.id || wire.to.component===component.id) : state.wires;
   $('#connection-list').innerHTML=wires.length ? wires.map(wire=>`<button class="connection-row${selection?.id===wire.id?' selected':''}" data-wire="${wire.id}" type="button" style="--wire:${wire.color}" aria-label="Seleccionar cable ${escapeText(wire.from.pin)} a ${escapeText(wire.to.pin)}"><span class="wire-line"></span><span class="endpoint">${escapeText(wire.from.pin.replace(/^GND\d$/, 'GND'))}</span>${icon('chevron')}<span class="endpoint">${escapeText(wire.to.pin)}</span></button>`).join('') : '<p class="field-hint">Sin conexiones. Selecciona dos pines para añadir un cable.</p>';
@@ -157,6 +184,25 @@ function render() {
   $('#component-count').textContent=`${state.components.length} componentes`;
   $('#wire-preview').setAttribute('d','');
 }
+
+$('#selection-details').addEventListener('pointerdown',event=>{
+  if(event.target.closest('#component-scale')&&!scaleEditBefore) scaleEditBefore=snapshot();
+});
+$('#selection-details').addEventListener('input',event=>{
+  if(event.target.id!=='component-scale'||selection?.kind!=='component')return;
+  if(!scaleEditBefore)scaleEditBefore=snapshot();
+  const component=state.components.find(item=>item.id===selection.id);
+  if(!component)return;
+  component.scale=Number(event.target.value);
+  component.x=Math.min(component.x,1100-componentTypes[component.type].width*component.scale);
+  component.y=Math.min(component.y,715-componentTypes[component.type].height*component.scale);
+  $('#component-scale-value').value=`${Math.round(component.scale*100)}%`;
+  renderComponents();renderWires();updateHistory();
+});
+$('#selection-details').addEventListener('change',event=>{
+  if(event.target.id!=='component-scale'||!scaleEditBefore)return;
+  commit(scaleEditBefore);scaleEditBefore=null;updateHistory();status('Tamaño del componente actualizado.');
+});
 
 function renderLibrary() {
   const query=$('#component-search').value.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -224,13 +270,15 @@ let programComponentStates = {};
 let programReturnFocus = null;
 let programCloseTimer = null;
 
-function openBoardProgram(component) {
-  if (programPanel.open || component.type !== 'uno') return;
+function openBoardProgram(component, withWorld = false) {
+  if (programPanel.open || !['uno','pi'].includes(component.type)) return;
   try { sessionStorage.setItem('robokan.program.circuit-transfer', snapshot()); }
   catch { status('No se pudo abrir el programa. Comprueba el almacenamiento del navegador.'); return; }
   const componentNumber = /-([1-9]\d*)$/.exec(component.id)?.[1];
   if (!componentNumber) { status('La placa tiene un identificador incompatible.'); return; }
-  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: 'arduino-uno:' + componentNumber, programKey: component.id });
+  const boardSpec = component.type === 'pi' ? 'raspberry-pi-4' : 'arduino-uno';
+  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: boardSpec + ':' + componentNumber, programKey: component.id });
+  if (withWorld) params.set('world', '1');
   programReturnFocus = component.id;
   $('#program-board-name').textContent = componentTypes[component.type].name + ' · ' + component.id;
   programFrame.src = 'blocks.html?' + params.toString();
@@ -241,6 +289,12 @@ function requestProgramClose() {
   programFrame.contentWindow?.postMessage({ type: 'robokan:request-close' }, location.origin);
 }
 $('#close-program-panel').addEventListener('click', requestProgramClose);
+$('#open-world').addEventListener('click', () => {
+  const isBoard=component=>['uno','pi'].includes(component.type);
+  const board = state.components.find(component => component.id === selection?.id && isBoard(component)) ?? state.components.find(isBoard);
+  if (!board) { status('Añade una placa para abrir el mundo 3D.'); return; }
+  openBoardProgram(board, true);
+});
 programPanel.addEventListener('cancel', event => { event.preventDefault(); requestProgramClose(); });
 window.addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== programFrame.contentWindow || !programPanel.open) return;
@@ -264,13 +318,40 @@ canvas.addEventListener('dblclick', event => {
   if (event.target.closest('[data-pin]')) return;
   const element = event.target.closest('[data-component]');
   const component = state.components.find(candidate => candidate.id === element?.dataset.component);
-  if (component?.type === 'uno') { event.preventDefault(); openBoardProgram(component); }
+  if (component&&['uno','pi'].includes(component.type)) { event.preventDefault(); openBoardProgram(component); }
 });
 
 canvas.addEventListener('pointerdown',event=>{
   if (event.button!==0) return;
+  const wireBend=event.target.closest('[data-wire-bend]');
+  if (wireBend) {
+    event.preventDefault();
+    const id=wireBend.dataset.wireId, index=Number(wireBend.dataset.wireBend);
+    const wire=state.wires.find(item=>item.id===id);
+    if (!wire) return;
+    const before=snapshot();
+    if (!Array.isArray(wire.bends)) wire.bends=cableBends(wire,state.wires.indexOf(wire)).map(p=>({...p}));
+    selection={kind:'wire',id};pending=null;
+    drag={kind:'wire-bend',id,index,pointer:event.pointerId,before};
+    canvas.setPointerCapture(event.pointerId);render();return;
+  }
   const pin=event.target.closest('[data-pin]');
   if (pin) { event.preventDefault(); choosePin({component:pin.dataset.owner,pin:pin.dataset.pin}); return; }
+  const wireEnd=event.target.closest('[data-wire-end]');
+  if (wireEnd) {
+    event.preventDefault();
+    const wire=state.wires.find(item=>item.id===wireEnd.dataset.wireId);
+    if (!wire) return;
+    pending=null; selection={kind:'wire',id:wire.id};
+    drag={kind:'wire-end',id:wire.id,end:wireEnd.dataset.wireEnd,pointer:event.pointerId,before:snapshot(),fixed:wire[wireEnd.dataset.wireEnd==='from'?'to':'from']};
+    canvas.setPointerCapture(event.pointerId);
+    render();
+    const p=canvasPoint(event), a=point(drag.fixed);
+    $('#wire-preview').setAttribute('d',roundedPath([a,{x:a.x,y:a.y+a.direction*25},{x:p.x,y:a.y+a.direction*25},p]));
+    $('#wire-preview').setAttribute('stroke',wire.color);$('#wire-preview').setAttribute('stroke-width','3');
+    status('Suelta el extremo sobre un pin para reconectar el cable. Esc para cancelar.');
+    return;
+  }
   const wire=event.target.closest('[data-wire]');
   if (wire) { selectWire(wire.dataset.wire); return; }
   const element=event.target.closest('[data-component]');
@@ -279,10 +360,10 @@ canvas.addEventListener('pointerdown',event=>{
     event.preventDefault(); pending=null; selection={kind:'component',id:element.dataset.component};
     const component=state.components.find(item=>item.id===selection.id);
     const now = performance.now();
-    if (component.type === 'uno' && lastBoardClick?.id === component.id && now - lastBoardClick.time < 450 && Math.hypot(event.clientX - lastBoardClick.x, event.clientY - lastBoardClick.y) < 8) {
+    if (['uno','pi'].includes(component.type) && lastBoardClick?.id === component.id && now - lastBoardClick.time < 450 && Math.hypot(event.clientX - lastBoardClick.x, event.clientY - lastBoardClick.y) < 8) {
       lastBoardClick = null; drag = null; openBoardProgram(component); return;
     }
-    lastBoardClick = component.type === 'uno' ? { id: component.id, time: now, x: event.clientX, y: event.clientY } : null;
+    lastBoardClick = ['uno','pi'].includes(component.type) ? { id: component.id, time: now, x: event.clientX, y: event.clientY } : null;
     const position=canvasPoint(event);
     drag={id:component.id,pointer:event.pointerId,startX:position.x,startY:position.y,x:component.x,y:component.y,before:snapshot(),moved:false};
     canvas.setPointerCapture(event.pointerId);
@@ -303,6 +384,13 @@ canvas.addEventListener('pointermove',event=>{
     viewCenter.x=drag.cx-(event.clientX-drag.clientX)/drag.scale;
     viewCenter.y=drag.cy-(event.clientY-drag.clientY)/drag.scale;
     setZoom(zoom);
+  } else if (drag?.kind==='wire-bend') {
+    const wire=state.wires.find(item=>item.id===drag.id);
+    if (wire?.bends?.[drag.index]) {wire.bends[drag.index]={x:Math.max(8,Math.min(1092,position.x)),y:Math.max(8,Math.min(742,position.y))};renderComponents();renderWires();}
+  } else if (drag?.kind==='wire-end') {
+    const a=point(drag.fixed),wire=state.wires.find(item=>item.id===drag.id);
+    $('#wire-preview').setAttribute('d',roundedPath([a,{x:a.x,y:a.y+a.direction*25},{x:position.x,y:a.y+a.direction*25},position]));
+    $('#wire-preview').setAttribute('stroke',wire?.color||selectedColor);$('#wire-preview').setAttribute('stroke-width','3');
   } else if (drag) {
     const component=state.components.find(item=>item.id===drag.id), model=componentTypes[component.type];
     const dx=position.x-drag.startX,dy=position.y-drag.startY;
@@ -321,6 +409,28 @@ canvas.addEventListener('pointermove',event=>{
 
 function finishDrag(event) {
   if (!drag || drag.pointer!==event.pointerId) return;
+  if (drag.kind==='wire-bend') {
+    const current=drag;
+    if(event.type==='pointercancel') state=JSON.parse(current.before);
+    else if(snapshot()!==current.before) {commit(current.before);status('Curva del cable acomodada. Puedes deshacer este cambio.');}
+    if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
+    drag=null;render();return;
+  }
+  if (drag.kind==='wire-end') {
+    const current=drag, wire=state.wires.find(item=>item.id===current.id);
+    const target=event.type==='pointerup' ? document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-pin]') : null;
+    if (wire && target) {
+      const endpoint={component:target.dataset.owner,pin:target.dataset.pin};
+      const other=wire[current.end==='from'?'to':'from'];
+      const duplicate=state.wires.some(item=>item.id!==wire.id&&((samePin(item.from,endpoint)&&samePin(item.to,other))||(samePin(item.to,endpoint)&&samePin(item.from,other))));
+      if (!samePin(endpoint,other)&&!duplicate) {
+        commit(current.before);wire[current.end]=endpoint;selection={kind:'wire',id:wire.id};
+        status(`Cable reconectado a ${endpoint.pin}.`);
+      } else status('No se puede conectar el cable a ese pin. Se conserva su conexión anterior.');
+    } else status('No se soltó sobre un pin. Se conserva la conexión anterior.');
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    drag=null;$('#wire-preview').setAttribute('d','');render();return;
+  }
   if (drag.kind==='pan') { drag=null;$('#workspace').classList.remove('panning');if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);return; }
   if (drag.moved) lastBoardClick = null;
   if (event.type==='pointercancel') state=JSON.parse(drag.before);
@@ -330,6 +440,23 @@ function finishDrag(event) {
 }
 canvas.addEventListener('pointerup',finishDrag);
 canvas.addEventListener('pointercancel',finishDrag);
+canvas.addEventListener('dblclick',event=>{
+  const element=event.target.closest('[data-wire]');
+  if(!element)return;
+  const wire=state.wires.find(item=>item.id===element.dataset.wire);
+  if(!wire)return;
+  const index=state.wires.indexOf(wire), bends=cableBends(wire,index).map(p=>({...p}));
+  const route=[point(wire.from),...bends,point(wire.to)], position=canvasPoint(event);
+  let segment=0, nearest=Infinity;
+  for(let i=0;i<route.length-1;i++){
+    const a=route[i],b=route[i+1],dx=b.x-a.x,dy=b.y-a.y;
+    const t=Math.max(0,Math.min(1,((position.x-a.x)*dx+(position.y-a.y)*dy)/(dx*dx+dy*dy||1)));
+    const distance=Math.hypot(position.x-(a.x+t*dx),position.y-(a.y+t*dy));
+    if(distance<nearest){nearest=distance;segment=i;}
+  }
+  commit();bends.splice(segment,0,{x:position.x,y:position.y});wire.bends=bends;selection={kind:'wire',id:wire.id};
+  render();status('Punto de curva añadido. Arrástralo para acomodar el cable.');
+});
 
 canvas.addEventListener('keydown',event=>{
   const pin=event.target.closest('[data-pin]'),wire=event.target.closest('[data-wire]'),componentElement=event.target.closest('[data-component]');
@@ -356,7 +483,7 @@ canvas.addEventListener('keydown',event=>{
   }
   if (componentElement && event.key === 'Enter' && event.altKey) {
     const component = state.components.find(candidate => candidate.id === componentElement.dataset.component);
-    if (component?.type === 'uno') { event.preventDefault(); openBoardProgram(component); }
+    if (['uno','pi'].includes(component?.type)) { event.preventDefault(); openBoardProgram(component); }
   }
   if (componentElement && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) {
     event.preventDefault();
@@ -419,21 +546,28 @@ $('#save-project').addEventListener('click',()=>{
   catch { status('No se pudo guardar: el almacenamiento del navegador no está disponible.'); }
 });
 
-$('#check-circuit').addEventListener('click',()=>{
-  const uno=state.components.find(item=>item.type==='uno'),sensor=state.components.find(item=>item.type==='ultrasonic');
-  const expected=[['5V','VCC'],['GND1','GND'],['D9','TRIG'],['D10','ECHO']];
-  const results=expected.map(([from,to])=>{
-    const aliases=from==='GND1'?['GND','GND1','GND2']:[from];
-    const connected=!!uno && !!sensor && state.wires.some(wire=>{
-      const pairs=[[wire.from,wire.to],[wire.to,wire.from]];
-      return pairs.some(([a,b])=>a.component===uno.id && aliases.includes(a.pin) && b.component===sensor.id && b.pin===to);
-    });
-    return {label:`${from==='GND1'?'GND':from} → ${to}`,connected};
-  });
-  const count=results.filter(result=>result.connected).length;
-  $('#check-summary').textContent=!uno||!sensor?'Añade una placa Uno y un sensor HC-SR04 para revisar el cableado.':`${count} de 4 conexiones del proyecto de inicio están presentes.`;
-  $('#check-results').innerHTML=results.map(result=>`<li class="${result.connected?'':'missing'}">${icon(result.connected?'check':'close')}<span>${result.label}</span><span style="margin-left:auto;color:var(--muted)">${result.connected?'Conectado':'Pendiente'}</span></li>`).join('');
-  $('#check-dialog').showModal();
+function evaluateCircuit() {
+  try {
+    const graph=importCircuitWorkbench(snapshot());
+    const result=evaluate(graph,circuitSpecs);
+    const issues=result.violations
+      .filter(violation=>violation.ruleId!=='floating_pin')
+      .map(violation=>`${violation.instanceId}: ${violation.ruleId}`);
+    for(const [instanceId,status] of Object.entries(result.statusByInstance))
+      if(status==='unpowered'&&!issues.some(issue=>issue.startsWith(`${instanceId}:`))) issues.push(`${instanceId}: sin alimentación.`);
+    return issues;
+  } catch (error) {
+    return [`No se pudo evaluar el circuito: ${error instanceof Error ? error.message : String(error)}`];
+  }
+}
+
+$('#run-circuit').addEventListener('click',()=>{
+  simulationRunning=!simulationRunning;
+  const button=$('#run-circuit');
+  if(!simulationRunning) {button.innerHTML=`${icon('check')}Iniciar simulación`;status('Simulación detenida.');return;}
+  button.innerHTML=`${icon('close')}Detener simulación`;
+  const issues=evaluateCircuit();
+  status(issues.length?`Simulación activa · ${issues.join(' ')}`:'Simulación activa · No se detectan fallos eléctricos básicos en las conexiones actuales.');
 });
 
 document.addEventListener('keydown',event=>{
@@ -449,3 +583,4 @@ document.addEventListener('keydown',event=>{
 });
 
 renderLibrary();render();
+

@@ -137,6 +137,7 @@ export class ProgramRunner {
       ...[...this.actuatorOrders.values()].map((order): HardwareInstruction => {
         if (order.op === "digital_write") return { ...order, digitalValue: 0 };
         if (order.op === "buzzer_write") return { ...order, isOn: false };
+        if (order.op === "servo_write") return { ...order, angleDeg: 90 };
         return order;
       }),
     ];
@@ -208,7 +209,9 @@ export class ProgramRunner {
   private startInstruction(): void {
     const instruction = this.instructions[this.cursor];
     if (!instruction) {
-      this.remainingMs = 0;
+      const completedCount = this.instructions.length;
+      this.stop();
+      this.cursor = completedCount;
       this.currentStatus = "completed";
       return;
     }
@@ -225,6 +228,8 @@ export class ProgramRunner {
       this.actuatorOrders.set(`pin:${instruction.pinName}`, instruction);
     if (instruction.op === "buzzer_write")
       this.actuatorOrders.set(`buzzer:${instruction.instanceId}`, instruction);
+    if (instruction.op === "servo_write")
+      this.actuatorOrders.set(`servo:${instruction.instanceId}`, instruction);
     const epoch = this.epoch;
     void Promise.resolve()
       .then(async () => {
@@ -235,7 +240,7 @@ export class ProgramRunner {
         );
         if (epoch !== this.epoch || this.currentStatus !== "running") return;
         if (!this.acceptResult(result)) return;
-        if (instruction.op === "read_distance") {
+        if (instruction.op === "read_distance" || instruction.op === "sensor_read") {
           if (
             result.kind !== "reading" ||
             result.resultId !== instruction.resultId ||

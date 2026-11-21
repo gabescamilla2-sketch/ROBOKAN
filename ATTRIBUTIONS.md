@@ -3,6 +3,10 @@
 | Archivo | Origen (URL) | Autor | Licencia | Modificado |
 |---|---|---|---|---|
 
+## Modelos compartidos por el equipo
+
+Los once archivos GLB en `src/modules/components/` se incorporaron sin cambios binarios desde [la entrega del Rol 5](https://github.com/gabescamilla2-sketch/ROBOKAN/tree/2f1aa5f8ccc795705276239ed55af046eb3bbe65/src/modules/components), commit `2f1aa5f8ccc795705276239ed55af046eb3bbe65` de la rama `modelos-3d`. La integración aplica escala y orientación en ejecución y conserva los materiales y metadatos originales. El detalle de archivos y correspondencias está en `src/modules/components/README.md`.
+
 ## Recursos del prototipo de portada
 
 # Asset attribution
