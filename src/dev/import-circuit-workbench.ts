@@ -4,7 +4,7 @@ import { circuitSpecs } from "./circuit-fixtures";
 
 export function importCircuitWorkbench(source: string): RobotDefinition {
   if (source.length > 2000000) throw new Error("Circuit too large");
-  const input = JSON.parse(source) as { components: { id: string; type: string; x: number; y: number; scale?: number }[]; wires: { id: string; from: { component: string; pin: string }; to: { component: string; pin: string }; color: string }[] };
+  const input = JSON.parse(source) as { components: { id: string; type: string; x: number; y: number; scale?: number; color?: string }[]; wires: { id: string; from: { component: string; pin: string }; to: { component: string; pin: string }; color: string }[] };
   const specs: Record<string, string> = { uno: "arduino-uno", pi: "raspberry-pi-4", ultrasonic: "hc-sr04", flame: "flame-sensor", gas: "mq2-gas-sensor", infrared: "ir-line-sensor", lm35: "lm35", breadboard: "breadboard", led: "led", resistor: "resistor", servo: "servo-sg90", motor: "dc-motor", buzzer: "buzzer", l298n: "motor-driver-l298n", battery: "battery-9v" };
   const ids = new Map<string, string>();
   const componentInstances = input.components.map((component) => {
@@ -14,7 +14,7 @@ export function importCircuitWorkbench(source: string): RobotDefinition {
     const instanceId = `${specs[component.type]}:${suffix}`;
     ids.set(component.id, instanceId);
     if (component.scale !== undefined && (!Number.isFinite(component.scale) || component.scale < 0.5 || component.scale > 1.5)) throw new Error("Invalid component scale");
-    return { instanceId, specId: specs[component.type], circuitPosition: { x: component.x, y: component.y }, rotationDeg: 0, ...(component.scale === undefined ? {} : { scale: component.scale }) };
+    return { instanceId, specId: specs[component.type], circuitPosition: { x: component.x, y: component.y }, rotationDeg: 0, ...(component.scale === undefined ? {} : { scale: component.scale }), ...(component.color === undefined ? {} : { color: component.color }) };
   });
   const pinRef = (endpoint: { component: string; pin: string }) => {
     const component = input.components.find((component) => component.id === endpoint.component);

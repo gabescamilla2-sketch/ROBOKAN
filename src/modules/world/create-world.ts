@@ -29,6 +29,8 @@ import {
 } from "./map";
 import { ComponentModelLibrary } from "./component-models";
 import { createRobotModel, type RobotModel } from "./robot-model";
+import { createBenchModel, type BenchModel } from "./bench-model";
+import { isRobotCircuit } from "./bench-layout";
 import { getComponentModel } from "../components";
 import {
   advanceRobot,
@@ -39,6 +41,15 @@ import {
 
 /** Arena walls are raised from 0.75 m to 1.5 m so the ultrasonic sensor sees them. */
 const ARENA_WALL_HEIGHT_SCALE = 2;
+
+/** Bulb colours of the LED colours the workbench offers. */
+const LED_BULB_COLORS: Record<string, string> = {
+  red: "#FF2A1F",
+  yellow: "#FFC21A",
+  green: "#2BD966",
+};
+/** Selection id prefix for a part of the 3D circuit bench. */
+const PART_PREFIX = "part:";
 
 export async function createRobotWorld(
   canvas: HTMLCanvasElement,
@@ -123,7 +134,16 @@ export async function createRobotWorld(
     const sceneryObstacleMeshes = imported.meshes.filter((mesh) =>
       /^obstacle-/.test(mesh.name),
     );
-    const fixedBounds = fixedMeshes.map(meshBounds);
+    const wallMeshes = fixedMeshes.filter((mesh) => /^arena-wall-/.test(mesh.name));
+    const hazardSolids = fixedMeshes.filter((mesh) => !wallMeshes.includes(mesh));
+    // Every piece of the fire and gas props, hidden on the 3D circuit bench.
+    const hazardVisuals = imported.meshes.filter((mesh) =>
+      /^(gas-|fire-|flame-|outer-flame|inner-flame)/.test(mesh.name),
+    );
+    const wallBounds = wallMeshes.map(meshBounds);
+    const hazardBounds = hazardSolids.map(meshBounds);
+    /** Non-robot circuits are shown as a 3D bench of parts and wires. */
+    let isBench = false;
     const sceneryBounds = sceneryObstacleMeshes.map(meshBounds);
     // User-designed arena: one box mesh per map obstacle.
     let worldMap: WorldMap = createDefaultWorldMap();
@@ -158,7 +178,7 @@ export async function createRobotWorld(
     );
     const gasPosition = hazardPosition("gas-tank", new Vector3(5.2, 0.4, 4.2));
     const modelLibrary = new ComponentModelLibrary(scene);
-    let assembly: RobotModel | undefined;
+    let assembly: (RobotModel & Partial<Pick<BenchModel, "bench">>) | undefined;
     let assemblyGeneration = 0;
     let definition = robotDefinition;
     let pose: RobotPose = { x: -5.5, z: -5.5, headingRad: 0 };
@@ -227,12 +247,9 @@ export async function createRobotWorld(
       const generation = ++assemblyGeneration;
       motorSpeeds.clear();
       stopSounds();
-      const nextAssembly = await createRobotModel(
-        scene,
-        next,
-        modelLibrary,
-        signal,
-      );
+      const nextAssembly = isRobotCircuit(next)
+        ? await createRobotModel(scene, next, modelLibrary, signal)
+        : await createBenchModel(scene, next, modelLibrary, signal);
       if (disposed || generation !== assemblyGeneration) {
         nextAssembly.dispose();
         return;
@@ -242,14 +259,22 @@ export async function createRobotWorld(
       assembly?.dispose();
       assembly = nextAssembly;
       definition = next;
+      isBench = "bench" in nextAssembly;
+      if (selectedPart() !== null || selectedObstacleId === ROBOT_SELECTION_ID)
+        selectedObstacleId = null;
       motorSides = assembly.motorSides;
       sensorOrigins.clear();
       servoNodes.clear();
       for (const instance of next.componentInstances) {
         const model = assembly.components.get(instance.instanceId);
         const nativeOrigin = model?.markers.get("sensor.origin");
+        if (instance.color && model)
+          model.setLedColor(LED_BULB_COLORS[instance.color] ?? LED_BULB_COLORS.red);
         if (nativeOrigin) sensorOrigins.set(instance.instanceId, nativeOrigin);
-        else if (
+        // The bench builds its own parts and sensor origins.
+        if (isBench) continue;
+        if (
+          !nativeOrigin &&
           ["flame-sensor", "mq2-gas-sensor", "ir-line-sensor", "lm35"].includes(
             instance.specId,
           )
@@ -299,6 +324,9 @@ export async function createRobotWorld(
           componentNodes.push(buzzer);
         }
       }
+      if (isBench) pose = { x: 0, z: 0, headingRad: 0 };
+      applyMode();
+      highlightSelection();
       syncPose();
     };
     const assertInstance = (id: string, specId: string) => {
@@ -331,17 +359,27 @@ export async function createRobotWorld(
     };
     const notifyMap = () =>
       mapListeners.forEach((listener) => listener(worldMap, selectedObstacleId));
+    const showScenery = () => worldMap.showSceneryObstacles && !isBench;
     const refreshCollisionTargets = () => {
       bounds = [
-        ...fixedBounds,
-        ...(worldMap.showSceneryObstacles ? sceneryBounds : []),
+        ...wallBounds,
+        ...(isBench ? [] : hazardBounds),
+        ...(showScenery() ? sceneryBounds : []),
         ...worldMap.obstacles.map(obstacleBounds),
       ];
       rayTargets = new Set<AbstractMesh>([
-        ...fixedMeshes,
-        ...(worldMap.showSceneryObstacles ? sceneryObstacleMeshes : []),
+        ...wallMeshes,
+        ...(isBench ? [] : hazardSolids),
+        ...(showScenery() ? sceneryObstacleMeshes : []),
         ...userObstacleMeshes.values(),
       ]);
+    };
+    /** Shows only what the current mode needs: the circuit bench hides fire, gas and the line. */
+    const applyMode = () => {
+      hazardVisuals.forEach((mesh) => mesh.setEnabled(!isBench));
+      line.setEnabled(!isBench);
+      sceneryObstacleMeshes.forEach((mesh) => mesh.setEnabled(showScenery()));
+      refreshCollisionTargets();
     };
     // Ring drawn under the robot while it is selected in design mode.
     const robotRing = MeshBuilder.CreateTorus(
@@ -355,11 +393,22 @@ export async function createRobotWorld(
     robotRing.material = robotRingMaterial;
     robotRing.isPickable = false;
     robotRing.setEnabled(false);
+    const selectedPart = () =>
+      selectedObstacleId?.startsWith(PART_PREFIX)
+        ? selectedObstacleId.slice(PART_PREFIX.length)
+        : null;
     const highlightSelection = () => {
       userObstacleMeshes.forEach((mesh, id) => {
         mesh.renderOutline = id === selectedObstacleId;
       });
-      robotRing.setEnabled(selectedObstacleId === ROBOT_SELECTION_ID);
+      // The ring marks the selected robot or bench part (see the render loop).
+      robotRing.setEnabled(
+        selectedObstacleId === ROBOT_SELECTION_ID ||
+          selectedPart() !== null ||
+          worldMap.obstacles.some(
+            (obstacle) => obstacle.id === selectedObstacleId && obstacle.kind === "chassis",
+          ),
+      );
     };
     /** Unit-sized mesh for a shape; scaling stretches it to the obstacle size. */
     const createShapeMesh = (name: string, kind: ObstacleKind): Mesh => {
@@ -390,6 +439,26 @@ export async function createRobotWorld(
           mesh.bakeCurrentTransformIntoVertices();
           return mesh;
         }
+        case "chassis": {
+          // An invisible unit box is the body (collisions, sensor, dragging);
+          // the real chassis model rides on it, fitted to the box.
+          const body = MeshBuilder.CreateBox(name, { size: 1 }, scene);
+          body.visibility = 0;
+          void modelLibrary.mount("chassis-2wd", name).then(
+            (model) => {
+              if (body.isDisposed()) {
+                model.dispose();
+                return;
+              }
+              model.root.parent = body;
+              model.root.scaling.set(1 / model.size.x, 1 / model.size.y, 1 / model.size.z);
+              model.root.position.y = -0.5;
+              body.onDisposeObservable.addOnce(() => model.dispose());
+            },
+            () => {},
+          );
+          return body;
+        }
         default:
           return MeshBuilder.CreateBox(name, { size: 1 }, scene);
       }
@@ -414,13 +483,12 @@ export async function createRobotWorld(
         mesh.computeWorldMatrix(true);
         userObstacleMeshes.set(obstacle.id, mesh);
       }
-      sceneryObstacleMeshes.forEach((mesh) =>
-        mesh.setEnabled(worldMap.showSceneryObstacles),
-      );
+      sceneryObstacleMeshes.forEach((mesh) => mesh.setEnabled(showScenery()));
       refreshCollisionTargets();
       highlightSelection();
     };
     const placeRobotAtStart = () => {
+      if (isBench) return; // the bench stays put; its parts move one by one
       pose = {
         x: worldMap.robotStart.x,
         z: worldMap.robotStart.z,
@@ -439,6 +507,7 @@ export async function createRobotWorld(
       if (
         selectedObstacleId &&
         selectedObstacleId !== ROBOT_SELECTION_ID &&
+        selectedPart() === null &&
         !worldMap.obstacles.some((obstacle) => obstacle.id === selectedObstacleId)
       )
         selectedObstacleId = null;
@@ -454,7 +523,9 @@ export async function createRobotWorld(
     };
     const selectObstacle = (id: string | null) => {
       selectedObstacleId =
-        id === ROBOT_SELECTION_ID ||
+        (id === ROBOT_SELECTION_ID && !isBench) ||
+        (id?.startsWith(PART_PREFIX) &&
+          assembly?.bench?.roots.has(id.slice(PART_PREFIX.length))) ||
         (id && worldMap.obstacles.some((obstacle) => obstacle.id === id))
           ? id
           : null;
@@ -475,29 +546,39 @@ export async function createRobotWorld(
     };
     const floorPointUnderPointer = () =>
       floorPointAtCanvas(scene.pointerX, scene.pointerY);
-    // Design mode: click selects an obstacle or the robot; dragging moves it on the floor.
+    // Every 3D object can be dragged on the floor: shapes, the robot and the
+    // parts of the circuit bench. Dragging empty space still orbits the camera.
     let drag: { id: string; offsetX: number; offsetZ: number } | null = null;
     scene.onPointerObservable.add((info) => {
-      if (!isEditing) return;
       if (info.type === PointerEventTypes.POINTERDOWN) {
         const meshes = new Set<AbstractMesh>(userObstacleMeshes.values());
-        const robotRoot = assembly?.root;
+        const bench = assembly?.bench;
+        const robotRoot = isBench ? undefined : assembly?.root;
         const hit = scene.pick(
           scene.pointerX,
           scene.pointerY,
           (mesh) =>
             meshes.has(mesh) ||
+            Boolean(bench?.partOf(mesh)) ||
             Boolean(robotRoot && mesh.isDescendantOf(robotRoot)),
         );
         const picked = hit?.pickedMesh;
-        const id: string | undefined =
-          picked && robotRoot && picked.isDescendantOf(robotRoot)
+        const part = picked && bench?.partOf(picked);
+        const id: string | undefined = part
+          ? PART_PREFIX + part
+          : picked && robotRoot && picked.isDescendantOf(robotRoot)
             ? ROBOT_SELECTION_ID
             : (picked?.metadata?.obstacleId as string | undefined);
-        selectObstacle(id ?? null);
+        if (!id) {
+          if (isEditing) selectObstacle(null);
+          return;
+        }
+        selectObstacle(id);
         const point = floorPointUnderPointer();
-        const target =
-          id === ROBOT_SELECTION_ID
+        const partRoot = part ? bench?.roots.get(part) : undefined;
+        const target = partRoot
+          ? { x: partRoot.position.x, z: partRoot.position.z }
+          : id === ROBOT_SELECTION_ID
             ? { x: pose.x, z: pose.z }
             : worldMap.obstacles.find((item) => item.id === id);
         if (id && point && target) {
@@ -510,6 +591,10 @@ export async function createRobotWorld(
         const id = drag.id;
         const x = point.x + drag.offsetX;
         const z = point.z + drag.offsetZ;
+        if (id.startsWith(PART_PREFIX)) {
+          assembly?.bench?.movePart(id.slice(PART_PREFIX.length), x, z);
+          return;
+        }
         if (id === ROBOT_SELECTION_ID) {
           // The robot never lands on top of an obstacle: keep the last free spot.
           const start = setRobotStart(worldMap, { x, z }).robotStart;
@@ -586,11 +671,13 @@ export async function createRobotWorld(
       }
     };
     const reset = () => {
-      pose = {
-        x: worldMap.robotStart.x,
-        z: worldMap.robotStart.z,
-        headingRad: (worldMap.robotStart.headingDeg * Math.PI) / 180,
-      };
+      pose = isBench
+        ? { x: 0, z: 0, headingRad: 0 }
+        : {
+            x: worldMap.robotStart.x,
+            z: worldMap.robotStart.z,
+            headingRad: (worldMap.robotStart.headingDeg * Math.PI) / 180,
+          };
       motorSpeeds.clear();
       leftSpeedPct = 0;
       rightSpeedPct = 0;
@@ -705,7 +792,22 @@ export async function createRobotWorld(
           thresholdRing.setEnabled(true);
         }
       }
-      robotRing.position.set(pose.x, 0.04, pose.z);
+      const ringPart = selectedPart();
+      const ringRoot = ringPart ? assembly?.bench?.roots.get(ringPart) : undefined;
+      const ringChassis = worldMap.obstacles.find(
+        (obstacle) => obstacle.id === selectedObstacleId && obstacle.kind === "chassis",
+      );
+      if (ringChassis) {
+        robotRing.position.set(ringChassis.x, 0.04, ringChassis.z);
+        robotRing.scaling.setAll((Math.max(ringChassis.widthM, ringChassis.depthM) * 1.3) / 2.1);
+      } else if (ringRoot && ringPart) {
+        const size = assembly!.bench!.sizeOf(ringPart);
+        robotRing.position.set(ringRoot.position.x, 0.04, ringRoot.position.z);
+        robotRing.scaling.setAll((Math.max(size.x, size.z) * 1.35) / 2.1);
+      } else {
+        robotRing.position.set(pose.x, 0.04, pose.z);
+        robotRing.scaling.setAll(1);
+      }
       if (followCamera && assembly)
         camera.target.copyFrom(assembly.root.position);
       scene.render();
@@ -761,10 +863,13 @@ export async function createRobotWorld(
           models: [...(assembly?.components ?? [])].map(
             ([instanceId, model]) => ({
               instanceId,
-              label: getComponentModel(String(model.root.metadata.modelId))!
-                .label,
+              // Bench stand-ins (resistor, buzzer…) have no catalog model.
+              label:
+                getComponentModel(String(model.root.metadata.modelId))?.label ??
+                String(model.root.metadata.modelId),
             }),
           ),
+          mode: isBench ? "bench" : "robot",
         };
       },
       setCameraView: (view) => {
@@ -772,11 +877,12 @@ export async function createRobotWorld(
         camera.setTarget(
           followCamera && assembly
             ? assembly.root.position.add(new Vector3(0, 0.5, 0))
-            : new Vector3(0, 0.4, 0),
+            : new Vector3(0, isBench ? 0.15 : 0.4, 0),
         );
         camera.alpha = -Math.PI / 2;
         camera.beta = view === "top" ? 0.06 : Math.PI / 3;
-        camera.radius = followCamera ? 5 : 20;
+        // The circuit bench is small: frame it closer than the whole arena.
+        camera.radius = isBench ? (followCamera ? 2.2 : 3.2) : followCamera ? 5 : 20;
       },
       setSensorRayVisible: (visible) => {
         showRay = visible;
@@ -793,6 +899,14 @@ export async function createRobotWorld(
       }),
       setMap,
       getSelectedObstacleId: () => selectedObstacleId,
+      setComponentStatuses: (statuses) => {
+        // LEDs light when the circuit powers them (5V or a HIGH pin).
+        for (const instance of definition.componentInstances)
+          if (instance.specId === "led")
+            assembly?.components
+              .get(instance.instanceId)
+              ?.setLed(statuses[instance.instanceId] === "ok");
+      },
       setAvoidThresholdCm: (thresholdCm) => {
         avoidThresholdCm =
           thresholdCm !== null && Number.isFinite(thresholdCm) && thresholdCm > 0

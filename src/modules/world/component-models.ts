@@ -14,6 +14,8 @@ export interface MountedModel {
   scale: number;
   markers: Map<string, TransformNode>;
   setLed(isOn: boolean, brightness?: number): void;
+  /** LED models only: tint the bulb and its glow (e.g. a green LED). */
+  setLedColor(colorHex: string): void;
   dispose(): void;
 }
 
@@ -114,20 +116,36 @@ export class ComponentModelLibrary {
           bulb = material as typeof bulb;
       }
     }
+    let glow = new Color3(1, 0.12, 0.08);
+    let isLit = false,
+      litBrightness = 1;
+    const setLed = (isOn: boolean, brightness = 1) => {
+      isLit = isOn;
+      litBrightness = brightness;
+      if (bulb)
+        bulb.emissiveColor.copyFrom(
+          isOn
+            ? glow.scale(Math.min(1, Math.max(0, brightness)))
+            : Color3.Black(),
+        );
+    };
     return {
       root,
       size: extent.scale(scale),
       scale,
       markers,
-      setLed(isOn, brightness = 1) {
-        if (bulb)
-          bulb.emissiveColor.copyFrom(
-            isOn
-              ? new Color3(1, 0.12, 0.08).scale(
-                  Math.min(1, Math.max(0, brightness)),
-                )
-              : Color3.Black(),
-          );
+      setLed,
+      setLedColor(colorHex) {
+        if (!bulb) return;
+        glow = Color3.FromHexString(colorHex);
+        // Standard or PBR material: tint whichever base colour it has.
+        const material = bulb as Material & {
+          diffuseColor?: Color3;
+          albedoColor?: Color3;
+        };
+        material.diffuseColor?.copyFrom(glow);
+        material.albedoColor?.copyFrom(glow);
+        setLed(isLit, litBrightness);
       },
       dispose() {
         entries.animationGroups.forEach((group) => group.dispose());

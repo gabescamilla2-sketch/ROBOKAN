@@ -159,6 +159,17 @@ function BlocksPage() {
   useEffect(() => {
     worldRef.current?.setAvoidThresholdCm(avoidThreshold);
   }, [avoidThreshold, isWorldReady]);
+  // Mirror the circuit in 3D: LEDs light when 5V or a HIGH pin powers them.
+  useEffect(() => {
+    if (!isWorldReady) return;
+    try {
+      worldRef.current?.setComponentStatuses(
+        evaluate(robot, circuitSpecs, drives).statusByInstance,
+      );
+    } catch {
+      // Drives that no longer match the circuit: keep the last state.
+    }
+  }, [robot, drives, isWorldReady]);
   const isActive = runner.status === "running" || runner.status === "paused";
   const issues = validateProgram(blocks);
   const instructions = issues.length === 0 ? generateInstructions(blocks) : [];

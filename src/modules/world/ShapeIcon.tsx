@@ -76,6 +76,16 @@ export function ShapeIcon({
         <path d="M32 8 51 50a19 7 0 0 1-19 7Z" fill={dark} />
       </>
     ),
+    chassis: (
+      <>
+        <rect x="14" y="40" width="9" height="16" rx="3" fill="#17243B" />
+        <rect x="41" y="40" width="9" height="16" rx="3" fill="#17243B" />
+        <path d="M12 30 32 20 52 30 32 40Z" fill={light} />
+        <path d="M12 30 32 40v6L12 36Z" fill={color} />
+        <path d="M52 30 32 40v6l20-10Z" fill={dark} />
+        <rect x="27" y="24" width="11" height="7" rx="1" fill="#1F6FA8" />
+      </>
+    ),
     pyramid: (
       <>
         <path d="M32 8 10 44l22 12Z" fill={color} />

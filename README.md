@@ -43,6 +43,8 @@ Junto a los bloques se puede ver el código C++ equivalente de Arduino, para que
 
 El robot cobra vida en una arena 3D. El sensor ultrasónico mide de verdad la distancia a lo que tiene enfrente: el rayo amarillo muestra lo que "ve", un anillo rojo marca la distancia de esquiva y el rayo se pone rojo cuando un obstáculo está más cerca. Así se entiende *por qué* el robot gira.
 
+Los ejercicios sin robot (encender un LED, el semáforo…) se ven en 3D como un circuito sobre la mesa: las piezas con sus cables de colores, los LEDs encendiéndose al ritmo del programa. Cualquier objeto 3D se puede arrastrar para acomodarlo, y en la biblioteca de formas también está el chasis del robot.
+
 ![Robot en el mundo 3D con el rayo del sensor y el anillo de la distancia de esquiva](docs/img/mundo-3d.png)
 
 ### 4. Diseña tu propio reto

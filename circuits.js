@@ -3,6 +3,12 @@ import { projects, DEFAULT_PROJECT } from './circuit-projects.js';
 import { importCircuitWorkbench } from './src/dev/import-circuit-workbench.ts';
 import { circuitSpecs } from './src/dev/circuit-fixtures.ts';
 import { evaluate } from './src/modules/circuit/api.ts';
+// Light modules only (no Blockly): run the exercise program inside the simulation.
+import { ProgramRunner } from './src/modules/runtime/program-runner.ts';
+import { generateInstructions } from './src/modules/blocks/generate-instructions.ts';
+import { validateProgram } from './src/modules/blocks/validate-program.ts';
+import { programForProject, programFromSavedWorkspace } from './src/dev/exercise-programs.ts';
+import { createCircuitProgramAdapter } from './src/dev/circuit-program-adapter.ts';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#circuit-canvas');
@@ -120,6 +126,7 @@ function loadProject(id, { reset = false } = {}) {
   const starter = starterOf(id), before = snapshot();
   if (before !== JSON.stringify(starter)) commit(before);
   state = starter; selection = null; pending = null;
+  if (simulationRunning) startSimulationProgram();
   if (reset) {
     try {
       localStorage.removeItem(storageKey);
@@ -637,6 +644,45 @@ $('#save-project').addEventListener('click',()=>{
 });
 
 let simulationStates = {};
+// Program running inside the simulation (board pins drive the circuit).
+let simulationRunner = null, simulationDrives = {}, simulationWatch = null, simulationNeedsWorld = false;
+const CIRCUIT_ONLY_OPS = new Set(['wait', 'digital_write', 'read_distance']);
+const BURN_RULES = new Set(['led_without_resistor', 'reversed_polarity', 'overvoltage_gpio']);
+// The board's program for this exercise: the one saved from the blocks editor, else the preloaded one.
+function simulationProgram() {
+  const board = state.components.find(component => ['uno', 'pi'].includes(component.type));
+  if (!board) return null;
+  let blocks;
+  try { blocks = programFromSavedWorkspace(localStorage.getItem('robokan.blocks.workspace.v1.' + programKeyOf(board.id))); } catch {}
+  blocks ??= programForProject(state.project);
+  if (!blocks?.length || validateProgram(blocks).length) return null;
+  const instructions = generateInstructions(blocks);
+  return instructions.every(instruction => CIRCUIT_ONLY_OPS.has(instruction.op)) ? { board, instructions } : { board, needsWorld: true };
+}
+function startSimulationProgram() {
+  stopSimulationProgram();
+  const program = simulationProgram();
+  simulationNeedsWorld = !!program?.needsWorld;
+  if (!program?.instructions) return;
+  const boardId = canonicalIdOf(program.board);
+  simulationRunner = new ProgramRunner(createCircuitProgramAdapter({
+    getGraph: () => importCircuitWorkbench(snapshot()),
+    getSpecs: () => circuitSpecs,
+    getBoardInstanceId: () => boardId,
+    getDrives: () => simulationDrives,
+    setDrives: next => { simulationDrives = next; render(); },
+    getDistanceCm: () => 30,
+  }));
+  try { simulationRunner.run(program.instructions, { repeat: true }); }
+  catch { simulationRunner = null; return; }
+  // Errors (e.g. an LED without resistor driven HIGH) stop the runner: show them.
+  simulationWatch = setInterval(() => { if (simulationRunner && simulationRunner.status !== 'running') { clearInterval(simulationWatch); simulationWatch = null; render(); } }, 150);
+}
+function stopSimulationProgram() {
+  clearInterval(simulationWatch); simulationWatch = null;
+  simulationRunner?.stop(); simulationRunner = null;
+  simulationDrives = {}; simulationNeedsWorld = false;
+}
 // "El LED rojo", "el sensor ultrasónico": article plus name, keeping acronyms.
 const withArticle = (name, capital = true) => `${capital ? 'El' : 'el'} ${/^[A-ZÁÉÍÓÚ][a-záéíóú]/.test(name) ? name[0].toLowerCase() + name.slice(1) : name}`;
 const SIMULATION_MESSAGES = {
@@ -651,21 +697,31 @@ const SIMULATION_MESSAGES = {
 function simulateCircuit() {
   try {
     const graph = importCircuitWorkbench(snapshot());
-    const result = evaluate(graph, circuitSpecs);
+    let result;
+    try { result = evaluate(graph, circuitSpecs, simulationDrives); }
+    catch { result = evaluate(graph, circuitSpecs); }
+    const states = { ...result.statusByInstance };
+    const running = simulationRunner?.status === 'running';
+    // A program stopped by an electrical error: its violations explain why (and what burned).
+    const stopped = simulationRunner && simulationRunner.status === 'error' ? simulationRunner : null;
+    const violations = [...(stopped?.violations ?? []), ...result.violations];
+    for (const violation of stopped?.violations ?? []) if (BURN_RULES.has(violation.ruleId)) states[violation.instanceId] = 'burned';
     const nameOf = instanceId => { const component = state.components.find(item => canonicalIdOf(item) === instanceId); return component ? displayName(component) : instanceId; };
     const messages = new Map();
-    for (const violation of result.violations) {
+    for (const violation of violations) {
       if (violation.ruleId === 'floating_pin' || messages.has(violation.instanceId)) continue;
       const message = SIMULATION_MESSAGES[violation.ruleId];
       if (message) messages.set(violation.instanceId, message(nameOf(violation.instanceId)));
     }
-    for (const [instanceId, componentStatus] of Object.entries(result.statusByInstance)) {
-      if (componentStatus !== 'unpowered' || messages.has(instanceId)) continue;
+    for (const [instanceId, componentStatus] of Object.entries(states)) {
+      // While a program runs, LEDs switching off is expected, not a fault.
+      if (componentStatus !== 'unpowered' || messages.has(instanceId) || running) continue;
       messages.set(instanceId, instanceId.startsWith('led:')
         ? `${withArticle(nameOf(instanceId))} está apagado: necesita energía de 5V o de un pin programado, pasando por una resistencia.`
         : `${withArticle(nameOf(instanceId))} no recibe energía: revisa sus conexiones de alimentación y GND.`);
     }
-    return { states: result.statusByInstance, messages: [...messages.values()] };
+    if (stopped?.error && !stopped.violations.length) messages.set('program', `El programa se detuvo: ${stopped.error}`);
+    return { states, messages: [...messages.values()], running };
   } catch (error) {
     return { states: {}, messages: [`No se pudo simular el circuito: ${error instanceof Error ? error.message : String(error)}`] };
   }
@@ -674,15 +730,18 @@ function refreshSimulation() {
   if (!simulationRunning) { simulationStates = {}; simulationSummary = ''; return; }
   const result = simulateCircuit();
   simulationStates = result.states;
-  simulationSummary = result.messages.length ? `Simulación activa · ${result.messages.join(' ')}` : 'Simulación activa · ¡El circuito funciona! No hay fallos eléctricos.';
+  const ok = result.running ? 'Ejecutando el programa de la placa: el circuito sigue sus órdenes.' : '¡El circuito funciona! No hay fallos eléctricos.';
+  const world = simulationNeedsWorld ? ' Este programa usa motores: ábrelo en Mundo 3D para verlo en acción.' : '';
+  simulationSummary = `Simulación activa · ${result.messages.length ? result.messages.join(' ') : ok}${world}`;
   status('');
 }
 
 $('#run-circuit').addEventListener('click',()=>{
   simulationRunning=!simulationRunning;
   const button=$('#run-circuit');
-  if(!simulationRunning) {button.innerHTML=`${icon('check')}Iniciar simulación`;render();status('Simulación detenida.');return;}
+  if(!simulationRunning) {stopSimulationProgram();button.innerHTML=`${icon('check')}Iniciar simulación`;render();status('Simulación detenida.');return;}
   button.innerHTML=`${icon('close')}Detener simulación`;
+  startSimulationProgram();
   // The simulation stays live: every edit re-evaluates it (see render).
   render();
 });

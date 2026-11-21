@@ -129,3 +129,17 @@ describe("exercise programs on their circuits (no 3D world)", () => {
     expect(runner.violations).toEqual([]);
   });
 });
+
+it("keeps LED colours from the workbench and rejects unknown ones", () => {
+  const graph = importCircuitWorkbench(
+    JSON.stringify(projects["traffic-light"].circuit),
+  );
+  expect(
+    graph.componentInstances
+      .filter((instance) => instance.specId === "led")
+      .map((instance) => instance.color),
+  ).toEqual(["red", "yellow", "green"]);
+  const circuit = structuredClone(projects["led-on"].circuit);
+  (circuit.components[2] as { color: string }).color = "purple";
+  expect(() => importCircuitWorkbench(JSON.stringify(circuit))).toThrow();
+});

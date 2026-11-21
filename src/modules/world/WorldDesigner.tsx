@@ -51,8 +51,11 @@ export function WorldDesigner({
   onRobotHeading,
   onRobotDefault,
   sensorHeightCm,
+  partLabel = null,
 }: {
   map: WorldMap;
+  /** Name of the selected part of the 3D circuit bench, when one is selected. */
+  partLabel?: string | null;
   /** Height of the robot's ultrasonic sensor, when the robot has one. */
   sensorHeightCm: number | null;
   selectedId: string | null;
@@ -114,7 +117,14 @@ export function WorldDesigner({
           {labels.clearMap}
         </button>
       </div>
-      {selectedId === ROBOT_SELECTION_ID ? (
+      {partLabel ? (
+        <fieldset className="world-obstacle-editor">
+          <legend>
+            {labels.partTitle} · {partLabel}
+          </legend>
+          <p className="code-note">{labels.partHint}</p>
+        </fieldset>
+      ) : selectedId === ROBOT_SELECTION_ID ? (
         <fieldset className="world-obstacle-editor">
           <legend>{labels.robotStart}</legend>
           <p className="code-note">{labels.robotHint}</p>

@@ -57,7 +57,11 @@ export interface ComponentInstance {
   mountPointId?: string;
   /** Visual scale relative to the model's catalog size (0.5–1.5). */
   scale?: number;
+  /** LED colour (optional, additive): shown in the 2D and 3D views. */
+  color?: LedColor;
 }
+export const LED_COLORS = ["red", "yellow", "green"] as const;
+export type LedColor = (typeof LED_COLORS)[number];
 export interface Wire {
   wireId: string;
   fromPin: PinRef;

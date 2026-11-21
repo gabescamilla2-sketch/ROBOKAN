@@ -33,7 +33,7 @@ function loadStoredMap(): WorldMap {
 }
 
 /** Distance in front of the robot where new obstacles appear. */
-const SPAWN_AHEAD_M = 2.5;
+const SPAWN_AHEAD_M = { robot: 2.5, bench: 1.4 } as const;
 
 export function WorldViewport({
   robot,
@@ -133,8 +133,8 @@ export function WorldViewport({
     const pose = world.getSnapshot();
     const headingRad = (pose.headingDeg * Math.PI) / 180;
     placeShape(kind, {
-      x: pose.xM + Math.sin(headingRad) * SPAWN_AHEAD_M,
-      z: pose.zM + Math.cos(headingRad) * SPAWN_AHEAD_M,
+      x: pose.xM + Math.sin(headingRad) * SPAWN_AHEAD_M[pose.mode],
+      z: pose.zM + Math.cos(headingRad) * SPAWN_AHEAD_M[pose.mode],
     });
   };
   const draggedShape = (types: readonly string[]) =>
@@ -279,6 +279,13 @@ export function WorldViewport({
           map={worldMap}
           sensorHeightCm={snapshot?.sensorHeightCm ?? null}
           selectedId={selectedId}
+          partLabel={
+            selectedId?.startsWith("part:")
+              ? (snapshot?.models.find(
+                  (model) => model.instanceId === selectedId.slice(5),
+                )?.label ?? selectedId.slice(5))
+              : null
+          }
           onAddShape={addAheadOfRobot}
           onUpdateObstacle={(id, patch) =>
             applyMap(updateObstacle(worldMap, id, patch))
@@ -301,15 +308,22 @@ export function WorldViewport({
       )}
       {snapshot && (
         <>
+          {snapshot.mode === "bench" && (
+            <p className="code-note world-bench-hint">{labels.benchHint}</p>
+          )}
           <dl className="world-telemetry">
-            <div>
-              <dt>{labels.leftMotor}</dt>
-              <dd>{snapshot.leftSpeedPct.toFixed(0)} %</dd>
-            </div>
-            <div>
-              <dt>{labels.rightMotor}</dt>
-              <dd>{snapshot.rightSpeedPct.toFixed(0)} %</dd>
-            </div>
+            {snapshot.mode === "robot" && (
+              <>
+                <div>
+                  <dt>{labels.leftMotor}</dt>
+                  <dd>{snapshot.leftSpeedPct.toFixed(0)} %</dd>
+                </div>
+                <div>
+                  <dt>{labels.rightMotor}</dt>
+                  <dd>{snapshot.rightSpeedPct.toFixed(0)} %</dd>
+                </div>
+              </>
+            )}
             <div>
               <dt>{labels.ultrasonic}</dt>
               <dd
@@ -334,10 +348,12 @@ export function WorldViewport({
                   : `${snapshot.avoidThresholdCm} cm`}
               </dd>
             </div>
-            <div>
-              <dt>{labels.heading}</dt>
-              <dd>{snapshot.headingDeg.toFixed(0)}°</dd>
-            </div>
+            {snapshot.mode === "robot" && (
+              <div>
+                <dt>{labels.heading}</dt>
+                <dd>{snapshot.headingDeg.toFixed(0)}°</dd>
+              </div>
+            )}
           </dl>
           {snapshot.avoidThresholdCm !== null && (
             <p className="code-note world-avoid-hint">{labels.avoidHint}</p>
@@ -348,7 +364,7 @@ export function WorldViewport({
           >
             {snapshot.isColliding ? labels.collision : labels.cameraHint}
           </p>
-          <details className="motor-mapping">
+          <details className="motor-mapping" hidden={snapshot.mode === "bench"}>
             <summary>{labels.motorMapping}</summary>
             {snapshot.motorSides.length === 0 ? (
               <p>{labels.noMotors}</p>

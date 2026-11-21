@@ -40,6 +40,8 @@ export interface RobotWorld extends WorldApi {
   setMap(map: WorldMap): void;
   /** Selected obstacle id, "robot" for the robot, or null. */
   getSelectedObstacleId(): string | null;
+  /** Mirrors circuit statuses in 3D (e.g. LEDs lit when powered). */
+  setComponentStatuses(statuses: Readonly<Record<string, string>>): void;
   /** Marks the program's avoid distance on the ultrasonic ray (null hides it). */
   setAvoidThresholdCm(thresholdCm: number | null): void;
   /** Arena floor point under a page (client) coordinate, or null off the floor. */
@@ -71,4 +73,6 @@ export interface WorldSnapshot {
   sensorHeightCm: number | null;
   motorSides: { instanceId: string; side: "left" | "right" }[];
   models: { instanceId: string; label: string }[];
+  /** "bench": a non-robot circuit shown as parts and 3D wires. */
+  mode: "robot" | "bench";
 }

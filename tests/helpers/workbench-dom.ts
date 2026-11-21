@@ -3,6 +3,14 @@ import { createRequire } from "node:module";
 import { circuitSpecs } from "../../src/dev/circuit-fixtures";
 import { importCircuitWorkbench } from "../../src/dev/import-circuit-workbench";
 import { evaluate } from "../../src/modules/circuit/api";
+import { ProgramRunner } from "../../src/modules/runtime/program-runner";
+import { generateInstructions } from "../../src/modules/blocks/generate-instructions";
+import { validateProgram } from "../../src/modules/blocks/validate-program";
+import {
+  programForProject,
+  programFromSavedWorkspace,
+} from "../../src/dev/exercise-programs";
+import { createCircuitProgramAdapter } from "../../src/dev/circuit-program-adapter";
 const { JSDOM } = createRequire(import.meta.url)("jsdom");
 
 const read = (file: string) =>
@@ -32,7 +40,17 @@ export function openWorkbench(
     window.localStorage.setItem(key, value);
   window.structuredClone = structuredClone;
   // circuits.js imports the real electrical engine; provide it as globals.
-  Object.assign(window, { importCircuitWorkbench, circuitSpecs, evaluate });
+  Object.assign(window, {
+    importCircuitWorkbench,
+    circuitSpecs,
+    evaluate,
+    ProgramRunner,
+    generateInstructions,
+    validateProgram,
+    programForProject,
+    programFromSavedWorkspace,
+    createCircuitProgramAdapter,
+  });
   window.matchMedia = () => ({ matches: true });
   window.confirm = () => options.confirm ?? true;
   window.DOMPoint = class {

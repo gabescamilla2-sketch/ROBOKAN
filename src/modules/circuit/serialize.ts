@@ -2,9 +2,10 @@ import type {
   CircuitGraph,
   ComponentInstance,
   ComponentSpec,
+  LedColor,
   Wire,
 } from "../../core";
-import { createIdAllocator } from "../../core";
+import { LED_COLORS, createIdAllocator } from "../../core";
 import { resolvePinPosition } from "./pins";
 import { wireKey } from "./wiring";
 export const MAX_CIRCUIT_BYTES = 2_000_000;
@@ -72,6 +73,9 @@ export function deserializeCircuit(
           ? undefined
           : text(instance.mountPointId);
       const scale = instance.scale === undefined ? undefined : coordinate(instance.scale);
+      const color = instance.color === undefined ? undefined : text(instance.color);
+      if (color !== undefined && !(LED_COLORS as readonly string[]).includes(color))
+        throw new Error("Invalid LED color");
       if (scale !== undefined && (scale < 0.5 || scale > 1.5))
         throw new Error("Invalid component scale");
       return {
@@ -84,6 +88,7 @@ export function deserializeCircuit(
         rotationDeg,
         ...(mountPointId === undefined ? {} : { mountPointId }),
         ...(scale === undefined ? {} : { scale }),
+        ...(color === undefined ? {} : { color: color as LedColor }),
       };
     },
   );

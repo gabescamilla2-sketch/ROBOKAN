@@ -12,6 +12,8 @@ export const OBSTACLE_KINDS = [
   "sphere",
   "cone",
   "pyramid",
+  // The robot's real chassis model, to place on its own (e.g. next to a bench circuit).
+  "chassis",
 ] as const;
 export type ObstacleKind = (typeof OBSTACLE_KINDS)[number];
 
@@ -79,6 +81,7 @@ export const OBSTACLE_PRESETS: Readonly<
   sphere: { widthM: 1.2, depthM: 1.2, heightM: 1.8, colorHex: "#1E9BD7" },
   cone: { widthM: 1.2, depthM: 1.2, heightM: 2.6, colorHex: "#8E44AD" },
   pyramid: { widthM: 1.4, depthM: 1.4, heightM: 2.6, colorHex: "#F2C12E" },
+  chassis: { widthM: 1.1, depthM: 1.45, heightM: 0.55, colorHex: "#3B4A5E" },
 });
 const PRESETS = OBSTACLE_PRESETS;
 /** Older saved maps called the cylinder "column". */

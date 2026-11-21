@@ -44,7 +44,7 @@
     "designing": "Terminar diseño",
     "shapes": "Formas básicas",
     "shapesHint": "Haz clic en una forma para ponerla frente al robot, o arrástrala a la arena para soltarla donde quieras.",
-    "kinds": {"box": "Caja", "wall": "Pared", "cylinder": "Cilindro", "sphere": "Esfera", "cone": "Cono", "pyramid": "Pirámide"},
+    "kinds": {"box": "Caja", "wall": "Pared", "cylinder": "Cilindro", "sphere": "Esfera", "cone": "Cono", "pyramid": "Pirámide", "chassis": "Chasis"},
     "scenery": "Obstáculos del escenario",
     "clearMap": "Vaciar mapa",
     "confirmClear": "¿Quitar todos los obstáculos que agregaste al mapa?",
@@ -58,6 +58,9 @@
     "robotHint": "Arrastra el robot por el piso para elegir dónde empieza. No se puede soltar encima de un obstáculo. Reiniciar robot lo devuelve aquí.",
     "robotHeading": "Orientación",
     "robotDefault": "Volver a la esquina inicial",
+    "benchHint": "Circuito en 3D: arrastra cualquier pieza para acomodarla y sus cables la siguen. Los LEDs se encienden cuando el circuito les da energía.",
+    "partTitle": "Pieza",
+    "partHint": "Arrástrala por el piso para acomodarla: sus cables la siguen.",
     "belowSensor": "Es más bajo que el sensor ultrasónico ({height} cm de altura): el robot no lo verá y puede chocar. Súbele la altura para que lo detecte."
   },
   "blocks": {

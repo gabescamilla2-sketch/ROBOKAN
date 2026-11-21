@@ -88,3 +88,63 @@ it("lights the LED in the simulation, then burns it without the resistor", () =>
     bench.window.close();
   }
 });
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+it("runs the exercise program in the simulation: the LED blinks on the workbench", async () => {
+  const bench = openWorkbench();
+  try {
+    select(bench, "led-blink");
+    bench.document.querySelector("#run-circuit").click();
+    const glowing = () =>
+      !!bench.canvas.querySelector(
+        '[data-component="led-1"] .program-led-glow',
+      );
+    await sleep(300);
+    expect(glowing()).toBe(true);
+    expect(statusText(bench)).toContain("programa");
+    await sleep(1000);
+    expect(glowing()).toBe(false);
+    bench.document.querySelector("#run-circuit").click();
+    expect(glowing()).toBe(false);
+  } finally {
+    bench.window.close();
+  }
+});
+
+it("runs the program saved for the exercise instead of the preloaded one", async () => {
+  const bench = openWorkbench({
+    storage: {
+      "robokan.blocks.workspace.v1.led-blink.uno-1": JSON.stringify({
+        version: 1,
+        workspace: {
+          blocks: {
+            languageVersion: 0,
+            blocks: [
+              {
+                type: "robokan_digital_write",
+                x: 40,
+                y: 40,
+                fields: { PIN: "D13", VALUE: "1" },
+              },
+            ],
+          },
+        },
+      }),
+    },
+  });
+  try {
+    select(bench, "led-blink");
+    bench.document.querySelector("#run-circuit").click();
+    await sleep(1400);
+    // The preloaded blink would be off by now; the saved program keeps it on.
+    expect(
+      !!bench.canvas.querySelector(
+        '[data-component="led-1"] .program-led-glow',
+      ),
+    ).toBe(true);
+    bench.document.querySelector("#run-circuit").click();
+  } finally {
+    bench.window.close();
+  }
+});

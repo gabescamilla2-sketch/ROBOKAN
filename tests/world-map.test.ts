@@ -32,7 +32,7 @@ describe("world map model", () => {
     expect(ULTRASONIC_RANGE_CM).toEqual({ min: 20, max: 450, default: 450 });
   });
 
-  it("offers six basic shapes like a shape library", () => {
+  it("offers six basic shapes and the robot chassis like a shape library", () => {
     expect(OBSTACLE_KINDS).toEqual([
       "box",
       "wall",
@@ -40,6 +40,7 @@ describe("world map model", () => {
       "sphere",
       "cone",
       "pyramid",
+      "chassis",
     ]);
     let map = createDefaultWorldMap();
     for (const kind of OBSTACLE_KINDS)
@@ -49,10 +50,16 @@ describe("world map model", () => {
     );
     expect(
       new Set(map.obstacles.map((obstacle) => obstacle.colorHex)).size,
-    ).toBe(6);
-    // Every preset reaches above the robot's ultrasonic sensor (about 1 m high).
-    for (const kind of OBSTACLE_KINDS)
+    ).toBe(7);
+    // Basic shapes reach above the robot's ultrasonic sensor (about 1 m high);
+    // the chassis keeps the real robot chassis proportions.
+    for (const kind of OBSTACLE_KINDS.filter((kind) => kind !== "chassis"))
       expect(OBSTACLE_PRESETS[kind].heightM, kind).toBeGreaterThanOrEqual(1.2);
+    expect(OBSTACLE_PRESETS.chassis).toMatchObject({
+      widthM: 1.1,
+      depthM: 1.45,
+      heightM: 0.55,
+    });
   });
 
   it("adds box, wall and cylinder presets with unique ids", () => {
