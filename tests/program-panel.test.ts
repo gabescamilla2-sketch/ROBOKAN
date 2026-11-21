@@ -24,6 +24,9 @@ it("opens programming only for Arduino and waits for approved close", async () =
     canvas.hasPointerCapture = () => false;
     canvas.querySelector('[data-component="sensor-1"]').dispatchEvent(new window.MouseEvent("dblclick", { bubbles: true }));
     expect(panel.open).toBe(false);
+    // Freeze the clock for the double click: on a slow CI runner the redraw
+    // between both presses can exceed the 450 ms double-click window.
+    window.performance.now = () => 1000;
     canvas.querySelector('[data-component="uno-1"]').dispatchEvent(new window.MouseEvent("pointerdown", { bubbles: true, clientX: 200, clientY: 350 }));
     canvas.dispatchEvent(new window.MouseEvent("pointerup", { bubbles: true }));
     expect(panel.open).toBe(false);

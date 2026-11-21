@@ -148,3 +148,31 @@ it("runs the program saved for the exercise instead of the preloaded one", async
     bench.window.close();
   }
 });
+
+it("forgets the programming panel's LED states once the panel closes", async () => {
+  const bench = openWorkbench();
+  try {
+    select(bench, "led-blink");
+    bench.canvas
+      .querySelector('[data-component="uno-1"]')
+      .dispatchEvent(new bench.window.MouseEvent("dblclick", { bubbles: true }));
+    const frame = bench.document.querySelector("#program-frame");
+    const fromPanel = (data: unknown) =>
+      bench.window.dispatchEvent(
+        new bench.window.MessageEvent("message", {
+          origin: "http://localhost",
+          source: frame.contentWindow,
+          data,
+        }),
+      );
+    fromPanel({ type: "robokan:circuit-state", statusByInstance: { "led:1": "ok" } });
+    const glowing = () =>
+      !!bench.canvas.querySelector('[data-component="led-1"] .program-led-glow');
+    expect(glowing()).toBe(true);
+    fromPanel({ type: "robokan:close-allowed" });
+    await sleep(50);
+    expect(glowing()).toBe(false);
+  } finally {
+    bench.window.close();
+  }
+});

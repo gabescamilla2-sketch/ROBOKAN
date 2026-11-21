@@ -383,6 +383,9 @@ window.addEventListener('message', event => {
   programCloseTimer = setTimeout(() => {
     programPanel.close();
     programFrame.removeAttribute('src');
+    // The panel's program no longer drives the circuit: drop its LED states.
+    programComponentStates = {};
+    renderComponents();
     [...canvas.querySelectorAll('[data-component]')].find(element => element.dataset.component === programReturnFocus)?.focus();
   }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240);
 });
