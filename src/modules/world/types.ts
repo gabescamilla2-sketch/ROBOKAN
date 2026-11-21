@@ -32,7 +32,7 @@ export interface RobotWorld extends WorldApi {
   setCameraView(view: "orbit" | "top" | "follow"): void;
   setSensorRayVisible(visible: boolean): void;
   setTraceVisible(visible: boolean): void;
-  configureRobot(robot: RobotDefinition): void;
+  configureRobot(robot: RobotDefinition): Promise<void>;
   dispose(): void;
 }
 
@@ -45,4 +45,5 @@ export interface WorldSnapshot {
   isColliding: boolean;
   distanceCm: number | null;
   motorSides: { instanceId: string; side: "left" | "right" }[];
+  models: { instanceId: string; label: string }[];
 }

@@ -16,13 +16,21 @@ export function advanceRobot(
   rightPct: number,
   deltaSeconds: number,
   obstacles: readonly ObstacleBounds[],
+  radiusM = 0.9,
 ): RobotPose {
   let remaining = Math.max(0, Math.min(deltaSeconds, 0.25));
   let result = { ...pose };
   // Short substeps keep motion and collision checks consistent at low FPS.
   while (remaining > 0) {
     const seconds = Math.min(remaining, 0.02);
-    result = advanceStep(result, leftPct, rightPct, seconds, obstacles);
+    result = advanceStep(
+      result,
+      leftPct,
+      rightPct,
+      seconds,
+      obstacles,
+      radiusM,
+    );
     remaining -= seconds;
   }
   return result;
@@ -34,6 +42,7 @@ function advanceStep(
   rightPct: number,
   seconds: number,
   obstacles: readonly ObstacleBounds[],
+  radiusM: number,
 ): RobotPose {
   const speedMps = ((leftPct + rightPct) / 200) * 2.2;
   const headingRad =
@@ -41,7 +50,6 @@ function advanceStep(
   const middleHeading = (pose.headingRad + headingRad) / 2;
   const x = pose.x + Math.sin(middleHeading) * speedMps * seconds;
   const z = pose.z + Math.cos(middleHeading) * speedMps * seconds;
-  const radiusM = 0.9;
   const collides = obstacles.some((bounds) => {
     const closestX = Math.max(bounds.minX, Math.min(x, bounds.maxX));
     const closestZ = Math.max(bounds.minZ, Math.min(z, bounds.maxZ));

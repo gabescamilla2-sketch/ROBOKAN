@@ -316,3 +316,17 @@ La interfaz combinada descrita en el apartado anterior fue retirada. Circuito y 
 - Verificación: 80 pruebas aprobadas (5 de portada y 75 de Vitest), comprobación de tipos y formato del circuito correctos, y compilación de producción correcta. Se verificaron visualmente la trayectoria, la orientación y la lectura del entorno en Brave.
 - Alcance final de esta entrega: simulación educativa con cinemática y colisiones simplificadas. El C++ se muestra como equivalente; se ejecutan instrucciones TypeScript. El catálogo y las posiciones de montaje están adaptados a la escena disponible; los modelos definitivos siguen siendo trabajo de integración del Rol 5.
 - Los cambios de esta entrega permanecen locales, sin un nuevo commit ni push.
+
+## Integración de los modelos GLB compartidos por Rol 5
+
+- Se descargó `origin/modelos-3d` y se incorporaron los once GLB de `src/modules/components` del commit `2f1aa5f8ccc795705276239ed55af046eb3bbe65`, sin mezclar cambios ajenos de esa rama ni cambiar los binarios respecto a su origen.
+- `components/models.ts` registra las URL y ajustes de presentación; el catálogo público y `ComponentSpec.modelPath` quedan vinculados a los archivos reales. Vite incluye los once archivos en la compilación, con sus URL de recursos.
+- El robot del GLB de escenario queda oculto. `world/robot-model.ts` construye el robot con `chasis.glb`, dos ruedas y las piezas que efectivamente existen en el circuito. El escenario sigue suministrando arena y obstáculos.
+- Se usan los marcadores del chasis para placa, batería, controlador, motores y ultrasónico. Las escalas y orientaciones se normalizan conservando los nodos de pines originales. Las ruedas tienen su pivote en el eje y se apoyan en el suelo; el radio de colisión se ajusta al ancho montado.
+- Las piezas conservan su `instanceId`, se desplazan y giran con el robot. Los bloques siguen pasando por ProgramRunner y el adaptador eléctrico. El ultrasónico mide desde `sensor.origin` del modelo montado; el LED modifica la emisión de `led_body`, con materiales independientes para cada instancia.
+- La biblioteca descarga cada tipo de modelo una vez por escena y reutiliza geometría. Libera clones y materiales al reconstruir y los recursos cargados al cerrar. La cancelación de carga respeta AbortSignal.
+- `RobotWorld.configureRobot` ahora devuelve `Promise<void>` porque puede necesitar cargar modelos nuevos. Debe esperarse antes de enviar comandos al robot reconfigurado.
+- El visor muestra **Componentes 3D del circuito** con nombres e identificadores y permite acercarse más con la cámara. Se verificó visualmente el robot armado ejecutando avance, giro y reversa con los modelos nuevos y el rayo del sensor.
+- La batería y Raspberry suministradas son referencias geométricas de los contratos existentes; no cambian sus características eléctricas. LM35 queda disponible como modelo visual, sin añadir una lectura de temperatura al contrato de instrucciones. Buzzer y servo conservan representaciones simplificadas al no haber un GLB correspondiente en la entrega.
+- Detalles y correspondencias en `src/modules/components/README.md`. `tests/component-models.test.ts` carga los once GLB reales, comprueba montaje, piezas opcionales, materiales LED independientes y cancelación.
+- Verificación final: 85 pruebas aprobadas (5 de portada y 80 de Vitest), compilación, tipos y formato correctos. El aviso previo de tamaño de los paquetes permanece. Esta integración queda local, pendiente de commit y publicación.

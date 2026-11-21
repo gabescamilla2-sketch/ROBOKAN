@@ -1,4 +1,5 @@
 import type { ComponentSpec, PinType, RobotDefinition, Wire } from "../core";
+import { getComponentModel } from "../modules/components";
 function makeSpec(
   specId: string,
   category: ComponentSpec["category"],
@@ -26,7 +27,7 @@ function makeSpec(
     supplyVoltageV,
     maxVoltageV: supplyVoltageV || 50,
     svgPath: "",
-    modelPath: "",
+    modelPath: getComponentModel(specId)?.url ?? "",
     behaviorKind: specId,
     sensorKind: sensorKinds[specId],
     actuatorKind: actuatorKinds[specId],

@@ -1,6 +1,8 @@
 {
   "world": {
     "title": "Mundo 3D",
+    "mountedModels": "Componentes 3D del circuito",
+    "modelsHint": "Chasis y ruedas forman la base. Las otras piezas se montan según los componentes del circuito. Usa Seguir robot y la rueda del ratón para verlas de cerca.",
     "repeat": "Repetir programa",
     "resetOnRun": "Reiniciar posición al ejecutar",
     "step": "Bloque",

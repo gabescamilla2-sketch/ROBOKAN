@@ -9,11 +9,13 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Ray } from "@babylonjs/core/Culling/ray";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader";
-import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import "@babylonjs/core/Culling/ray";
 import "@babylonjs/loaders/glTF";
 import type { RobotDefinition } from "../../core";
 import type { RobotWorld, WorldActuatorCommand } from "./types";
+import { ComponentModelLibrary } from "./component-models";
+import { createRobotModel, type RobotModel } from "./robot-model";
+import { getComponentModel } from "../components";
 import { advanceRobot, type ObstacleBounds, type RobotPose } from "./motion";
 
 export async function createRobotWorld(
@@ -57,7 +59,7 @@ export async function createRobotWorld(
       new Vector3(0, 0.4, 0),
       scene,
     );
-    camera.lowerRadiusLimit = 5;
+    camera.lowerRadiusLimit = 2.5;
     camera.upperRadiusLimit = 30;
     camera.upperBetaLimit = Math.PI / 2.05;
     camera.attachControl(canvas, true);
@@ -70,9 +72,8 @@ export async function createRobotWorld(
     if (disposed) throw new DOMException("World disposed", "AbortError");
     const robot = imported.meshes.find((mesh) => mesh.name === "robot-chassis");
     if (!robot) throw new Error("El modelo 3D no contiene robot-chassis.");
-    robot.setParent(null);
-    robot.scaling.set(1, 1, 1);
-    robot.rotationQuaternion = null;
+    // The arena GLB supplies scenery only; the robot is assembled from Rol 5 assets.
+    robot.setEnabled(false);
     const obstacles = imported.meshes.filter((mesh) =>
       /^(arena-wall|obstacle-|gas-tank|fire-base)/.test(mesh.name),
     );
@@ -108,37 +109,15 @@ export async function createRobotWorld(
       new Vector3(-5.1, 0.4, 4.1),
     );
     const gasPosition = hazardPosition("gas-tank", new Vector3(5.2, 0.4, 4.2));
-    const mounts: Record<string, Vector3> = {
-      "front-center": new Vector3(0, 0.03, 0.93),
-      "front-left": new Vector3(-0.65, -0.12, 0.52),
-      "front-right": new Vector3(0.65, -0.12, 0.52),
-      "rear-left": new Vector3(-0.65, -0.12, -0.52),
-      "rear-right": new Vector3(0.65, -0.12, -0.52),
-      "top-center": new Vector3(0, 0.48, -0.28),
-    };
-    for (const [name, position] of Object.entries(mounts)) {
-      const node = new TransformNode(`mount.${name}`, scene);
-      node.parent = robot;
-      node.position.copyFrom(position);
-    }
+    const modelLibrary = new ComponentModelLibrary(scene);
+    let assembly: RobotModel | undefined;
+    let assemblyGeneration = 0;
     let definition = robotDefinition;
     let pose: RobotPose = { x: -5.5, z: -5.5, headingRad: 0 };
     const motorSpeeds = new Map<string, number>();
     const sensorOrigins = new Map<string, TransformNode>();
-    const ledMeshes = new Map<string, AbstractMesh>();
     const servoNodes = new Map<string, TransformNode>();
     const componentNodes: TransformNode[] = [];
-    const wheelMeshes = imported.meshes.filter((mesh) =>
-      /^wheel-.*(?<!center)$/.test(mesh.name),
-    );
-    wheelMeshes.forEach((wheel) => {
-      if (wheel.rotationQuaternion)
-        wheel.rotation.copyFrom(wheel.rotationQuaternion.toEulerAngles());
-      wheel.rotationQuaternion = null;
-    });
-    imported.meshes
-      .find((mesh) => mesh.name === "robot-status-led")
-      ?.setEnabled(false);
     let followCamera = false;
     let leftSpeedPct = 0,
       rightSpeedPct = 0,
@@ -175,89 +154,88 @@ export async function createRobotWorld(
       sounds.clear();
     };
     const syncPose = () => {
-      robot.position.set(pose.x, 0.43, pose.z);
-      robot.rotation.set(0, pose.headingRad, 0);
-      robot.computeWorldMatrix(true);
+      if (!assembly) return;
+      assembly.root.position.set(pose.x, assembly.groundOffset, pose.z);
+      assembly.root.rotation.set(0, pose.headingRad, 0);
+      assembly.root.computeWorldMatrix(true);
     };
-    const configureRobot = (next: RobotDefinition) => {
-      definition = next;
-      const motors = next.componentInstances
-        .filter((instance) => instance.specId === "dc-motor")
-        .sort((a, b) =>
-          a.instanceId.localeCompare(b.instanceId, undefined, {
-            numeric: true,
-          }),
-        );
-      motorSides = motors.map((instance, index) => ({
-        instanceId: instance.instanceId,
-        side: instance.mountPointId?.endsWith("-left")
-          ? "left"
-          : instance.mountPointId?.endsWith("-right")
-            ? "right"
-            : index % 2 === 0
-              ? "left"
-              : "right",
-      }));
+    const configureRobot = async (next: RobotDefinition) => {
+      const generation = ++assemblyGeneration;
       motorSpeeds.clear();
       stopSounds();
+      const nextAssembly = await createRobotModel(
+        scene,
+        next,
+        modelLibrary,
+        signal,
+      );
+      if (disposed || generation !== assemblyGeneration) {
+        nextAssembly.dispose();
+        return;
+      }
       componentNodes.forEach((node) => node.dispose(false, true));
       componentNodes.length = 0;
+      assembly?.dispose();
+      assembly = nextAssembly;
+      definition = next;
+      motorSides = assembly.motorSides;
       sensorOrigins.clear();
-      ledMeshes.clear();
       servoNodes.clear();
       for (const instance of next.componentInstances) {
+        const model = assembly.components.get(instance.instanceId);
+        const nativeOrigin = model?.markers.get("sensor.origin");
+        if (nativeOrigin) sensorOrigins.set(instance.instanceId, nativeOrigin);
+        else if (
+          ["flame-sensor", "mq2-gas-sensor", "ir-line-sensor"].includes(
+            instance.specId,
+          )
+        ) {
+          const origin = new TransformNode(
+            `sensor.origin:${instance.instanceId}`,
+            scene,
+          );
+          origin.parent = assembly.root;
+          origin.position.copyFrom(
+            assembly.mounts[instance.mountPointId ?? "front-center"] ??
+              assembly.mounts["front-center"],
+          );
+          sensorOrigins.set(instance.instanceId, origin);
+          componentNodes.push(origin);
+        }
         if (instance.specId === "servo-sg90") {
           const arm = MeshBuilder.CreateBox(
             `servo:${instance.instanceId}`,
             { width: 0.12, height: 0.07, depth: 0.5 },
             scene,
           );
-          arm.parent = robot;
-          arm.position.set(0, 0.6, 0.15);
+          arm.parent = assembly.root;
+          arm.position.copyFrom(
+            assembly.mounts[instance.mountPointId ?? "top-center"] ??
+              assembly.mounts["top-center"],
+          );
+          arm.position.y += 0.2;
           servoNodes.set(instance.instanceId, arm);
           componentNodes.push(arm);
         }
-        if (
-          [
-            "hc-sr04",
-            "flame-sensor",
-            "mq2-gas-sensor",
-            "ir-line-sensor",
-          ].includes(instance.specId)
-        ) {
-          const origin = new TransformNode(
-            `sensor.origin:${instance.instanceId}`,
+        if (instance.specId === "buzzer") {
+          const buzzer = MeshBuilder.CreateCylinder(
+            `buzzer:${instance.instanceId}`,
+            { diameter: 0.2, height: 0.14 },
             scene,
           );
-          origin.parent = robot;
-          origin.position.copyFrom(
-            mounts[instance.mountPointId ?? "front-center"] ??
-              mounts["front-center"],
-          );
-          sensorOrigins.set(instance.instanceId, origin);
-          componentNodes.push(origin);
-        }
-        if (instance.specId === "led") {
-          const led = MeshBuilder.CreateSphere(
-            `led:${instance.instanceId}`,
-            { diameter: 0.13 },
-            scene,
-          );
-          led.parent = robot;
-          led.position.copyFrom(
-            mounts[instance.mountPointId ?? "top-center"] ??
-              mounts["top-center"],
-          );
+          buzzer.parent = assembly.root;
+          buzzer.position.copyFrom(assembly.mounts["top-center"]);
+          buzzer.position.addInPlace(new Vector3(0.35, 0.12, -0.2));
           const material = new StandardMaterial(
-            `led-material:${instance.instanceId}`,
+            `buzzer-material:${instance.instanceId}`,
             scene,
           );
-          material.diffuseColor = Color3.FromHexString("#F16C75");
-          led.material = material;
-          ledMeshes.set(instance.instanceId, led);
-          componentNodes.push(led);
+          material.diffuseColor = Color3.FromHexString("#17243B");
+          buzzer.material = material;
+          componentNodes.push(buzzer);
         }
       }
+      syncPose();
     };
     const assertInstance = (id: string, specId: string) => {
       if (
@@ -303,14 +281,9 @@ export async function createRobotWorld(
           Math.max(-100, Math.min(100, command.speedPct)),
         );
       } else if (command.actuatorKind === "led") {
-        const material = ledMeshes.get(command.instanceId)?.material as
-          StandardMaterial | undefined;
-        if (material)
-          material.emissiveColor = command.isOn
-            ? new Color3(1, 0.15, 0.2).scale(
-                Math.max(0, Math.min(1, command.brightnessNorm)),
-              )
-            : Color3.Black();
+        assembly?.components
+          .get(command.instanceId)
+          ?.setLed(command.isOn, command.brightnessNorm);
       } else if (command.actuatorKind === "buzzer") {
         sounds.get(command.instanceId)?.stop();
         sounds.delete(command.instanceId);
@@ -360,12 +333,12 @@ export async function createRobotWorld(
       trace.color = Color3.FromHexString("#2878F0");
       trace.setEnabled(showTrace);
       stopSounds();
-      ledMeshes.forEach((mesh) => {
-        (mesh.material as StandardMaterial).emissiveColor = Color3.Black();
-      });
+      assembly?.components.forEach((model) => model.setLed(false));
+      assembly?.wheels.forEach((wheel) => wheel.pivot.rotation.setAll(0));
+      servoNodes.forEach((servo) => servo.rotation.setAll(0));
       syncPose();
     };
-    configureRobot(robotDefinition);
+    await configureRobot(robotDefinition);
     reset();
     engine.runRenderLoop(() => {
       if (disposed) return;
@@ -382,16 +355,23 @@ export async function createRobotWorld(
       rightSpeedPct = speedFor("right");
       const seconds = Math.min(engine.getDeltaTime() / 1000, 0.25);
       const previous = pose;
-      pose = advanceRobot(pose, leftSpeedPct, rightSpeedPct, seconds, bounds);
+      pose = advanceRobot(
+        pose,
+        leftSpeedPct,
+        rightSpeedPct,
+        seconds,
+        bounds,
+        assembly?.collisionRadius,
+      );
       const moved = Math.hypot(pose.x - previous.x, pose.z - previous.z);
       isColliding =
         Math.abs(leftSpeedPct + rightSpeedPct) > 0.01 &&
         moved < 0.00001 &&
         seconds > 0;
       syncPose();
-      wheelMeshes.forEach((wheel) => {
-        wheel.rotation.x +=
-          ((wheel.name.includes("left") ? leftSpeedPct : rightSpeedPct) / 100) *
+      assembly?.wheels.forEach((wheel) => {
+        wheel.pivot.rotation.x +=
+          ((wheel.side === "left" ? leftSpeedPct : rightSpeedPct) / 100) *
           seconds *
           6;
       });
@@ -434,7 +414,8 @@ export async function createRobotWorld(
         );
         targetMarker.position.copyFrom(end);
       }
-      if (followCamera) camera.target.copyFrom(robot.position);
+      if (followCamera && assembly)
+        camera.target.copyFrom(assembly.root.position);
       scene.render();
     });
     return {
@@ -479,16 +460,25 @@ export async function createRobotWorld(
           isColliding,
           distanceCm: sensor ? distance(sensor.instanceId) : null,
           motorSides: motorSides.map((motor) => ({ ...motor })),
+          models: [...(assembly?.components ?? [])].map(
+            ([instanceId, model]) => ({
+              instanceId,
+              label: getComponentModel(String(model.root.metadata.modelId))!
+                .label,
+            }),
+          ),
         };
       },
       setCameraView: (view) => {
         followCamera = view === "follow";
         camera.setTarget(
-          followCamera ? robot.position.clone() : new Vector3(0, 0.4, 0),
+          followCamera && assembly
+            ? assembly.root.position.add(new Vector3(0, 0.5, 0))
+            : new Vector3(0, 0.4, 0),
         );
         camera.alpha = -Math.PI / 2;
         camera.beta = view === "top" ? 0.06 : Math.PI / 3;
-        camera.radius = followCamera ? 8 : 20;
+        camera.radius = followCamera ? 5 : 20;
       },
       setSensorRayVisible: (visible) => {
         showRay = visible;

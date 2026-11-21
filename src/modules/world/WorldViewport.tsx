@@ -161,6 +161,19 @@ export function WorldViewport({
               </ul>
             )}
           </details>
+          <details className="motor-mapping">
+            <summary>
+              {labels.mountedModels} ({snapshot.models.length})
+            </summary>
+            <ul>
+              {snapshot.models.map((model) => (
+                <li key={model.instanceId}>
+                  {model.label} · {model.instanceId}
+                </li>
+              ))}
+            </ul>
+            <p>{labels.modelsHint}</p>
+          </details>
         </>
       )}
     </section>

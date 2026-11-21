@@ -15,8 +15,10 @@ El ejemplo avanza, mide distancia, gira y retrocede. Los bloques y el mundo apar
 
 Desde `/circuits.html`, Mundo 3D abre el robot con los componentes y conexiones actuales. El ultrasónico mide obstáculos del entorno por rayos. Los motores requieren alimentación y sus identificadores se muestran en la pantalla de programación. El catálogo es educativo y el movimiento usa cinemática diferencial con colisiones simplificadas.
 
+El robot utiliza los GLB de la rama `modelos-3d`: chasis y ruedas más los componentes presentes en el circuito. Pulsa **Seguir robot** para ver las piezas de cerca y abre **Componentes 3D del circuito** para consultar sus identificadores. El catálogo incluye los once modelos suministrados; el LM35 tiene representación visual y todavía no tiene instrucciones de lectura de temperatura. Consulta [el catálogo de modelos](src/modules/components/README.md).
+
 ## Desarrollo local
 
 Instala con `npm ci --ignore-scripts` y ejecuta `npm run dev`. Desde la página principal, selecciona un proyecto y pulsa **Abrir circuito**. También puedes entrar en `/circuit.html` dentro del servidor local.
 
-Comprobaciones: `npm test`, `npm run typecheck:circuit`, `npm run format:check` y `npm run build`. La construcción conserva la página principal y genera el circuito y los bloques como entradas separadas en `dist/`. El runtime y el mundo 3D están conectados al circuito mediante el adaptador público. El catálogo sigue siendo de desarrollo y el montaje de modelos definitivos corresponde a la integración del Rol 5.
+Comprobaciones: `npm test`, `npm run typecheck:circuit`, `npm run format:check` y `npm run build`. La construcción conserva la página principal y genera el circuito y los bloques como entradas separadas en `dist/`. El runtime y el mundo 3D están conectados al circuito mediante el adaptador público. El catálogo eléctrico sigue siendo de desarrollo; los modelos GLB compartidos por el Rol 5 ya están integrados.
