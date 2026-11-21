@@ -49,7 +49,7 @@
       <div class="hero__text span-5">
         <p class="hero__kicker">TU PRIMER LABORATORIO DE ROBÓTICA</p>
         <h1 id="hero-h">Robótica para estudiantes.</h1>
-        <p class="hero__lead">ROBOKAN es un laboratorio para aprender robótica y electrónica. Conecta componentes, programa con bloques o Python y prueba tus robots en un mundo 3D.</p>
+        <p class="hero__lead">ROBOKAN es un laboratorio para aprender robótica y electrónica. Conecta componentes, programa con bloques o C++ y prueba tus robots en un mundo 3D.</p>
         <div class="btn-row"><button class="btn btn--primary" type="button" data-open-start>Comenzar a crear</button></div>
         <p class="hero__proof">Para primaria y secundaria. En español, desde el navegador.</p>
       </div>
@@ -62,20 +62,22 @@
               <div class="pane-heading">Mi programa <span class="code-mark" aria-hidden="true">&lt;/&gt;</span></div>
               <div role="tablist" aria-label="Lenguaje de la muestra" class="language-tabs">
                 <button role="tab" id="blocks-tab" aria-controls="blocks-view" aria-selected="true" type="button">Bloques</button>
-                <button role="tab" id="python-tab" aria-controls="python-view" aria-selected="false" tabindex="-1" type="button">Python</button>
+                <button role="tab" id="cpp-tab" aria-controls="cpp-view" aria-selected="false" tabindex="-1" type="button">C++</button>
               </div>
               <div id="blocks-view" role="tabpanel" aria-labelledby="blocks-tab" class="block-workspace">
                 <div class="code-block event-block">al comenzar</div>
                 <div class="code-block control-block">repetir siempre<div class="block-inner"><div class="code-block sensor-block">si distancia &lt; <span>20</span> cm</div><div class="code-block move-block">girar a la derecha</div><div class="code-block move-block">si no, avanzar</div></div></div>
               </div>
-              <div id="python-view" role="tabpanel" aria-labelledby="python-tab" hidden class="python-view"><pre><code># Evasor de obstáculos
-# Idea del programa
-# en pseudocódigo Python
-while True:
-    if distancia &lt; 20:
-        girar_derecha()
-    else:
-        avanzar()</code></pre></div>
+              <div id="cpp-view" role="tabpanel" aria-labelledby="cpp-tab" hidden class="cpp-view"><pre><code>void setup() {
+    pinMode(13, OUTPUT);
+}
+
+void loop() {
+    digitalWrite(13, HIGH);
+    delay(1000);
+    digitalWrite(13, LOW);
+    delay(1000);
+}</code></pre></div>
               <div class="pane-foot">Evasor de obstáculos</div>
             </div>
             <div class="arena-pane"><div class="pane-heading">Tu robot <span class="arena-view">VISTA SUPERIOR</span></div>
@@ -99,7 +101,7 @@ while True:
       <p class="t-label">DE LA IDEA AL ROBOT</p>
       <h2 id="lab-h">Un laboratorio.<br>Tus propias soluciones.</h2>
       <p class="t-lead lab-lead">Aprende qué conecta cada cable, qué indica un sensor y cómo una instrucción cambia lo que hace tu robot.</p>
-      <div data-moment="marquee-row" data-moment-opts='{"speed":24,"gap":48}'><ul class="mo-mq__track"><li>Circuitos</li><li>Sensores</li><li>Bloques</li><li>Python</li><li>Motores</li><li>Robots</li></ul></div>
+      <div data-moment="marquee-row" data-moment-opts='{"speed":24,"gap":48}'><ul class="mo-mq__track"><li>Circuitos</li><li>Sensores</li><li>Bloques</li><li>C++</li><li>Motores</li><li>Robots</li></ul></div>
       <div class="lab-bottom"><span>ROBOKAN</span><span>Robótica y electrónica para aprender haciendo.</span></div>
     </div>
   </section>

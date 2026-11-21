@@ -119,7 +119,11 @@ function cablePath(wire,index) {
 function renderComponents() {
   $('#components-layer').innerHTML=state.components.map(component => {
     const model=componentTypes[component.type];
-    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${component.type === 'uno' ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g><text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
+    const canonicalType = { uno:'arduino-uno', ultrasonic:'hc-sr04', led:'led', resistor:'resistor', servo:'servo-sg90', breadboard:'breadboard' }[component.type];
+    const canonicalId = canonicalType + ':' + /-([1-9]\d*)$/.exec(component.id)?.[1];
+    const electricalStatus = programComponentStates[canonicalId];
+    const ledOn = component.type === 'led' && electricalStatus === 'ok';
+    return `<g class="circuit-component" data-component="${component.id}" transform="translate(${component.x} ${component.y})" role="button" tabindex="0" aria-label="${model.name}, seleccionar. Usa las flechas para mover.${component.type === 'uno' ? ' Doble clic o Alt+Enter para programar.' : ''}"><title>${model.name} · ${model.model}</title>${selection?.id===component.id ? `<rect class="component-selection" x="-9" y="-9" width="${model.width+18}" height="${model.height+18}" rx="7"/>` : ''}<g filter="url(#component-shadow)">${model.art(component.id)}</g>${ledOn ? `<ellipse class="program-led-glow" cx="45" cy="36" rx="28" ry="30" fill="#F16C75" opacity=".65" pointer-events="none"/>` : ''}${electricalStatus ? `<text class="component-program-status" x="0" y="${model.height+25}">${electricalStatus === 'ok' ? 'Activo' : electricalStatus === 'burned' ? 'Fallo eléctrico' : 'Sin alimentación'}</text>` : ''}<text class="component-label" x="0" y="-18">${model.name}<tspan class="component-label-id" dx="9">${model.model}</tspan></text></g>`;
   }).join('');
   $('#pins-layer').innerHTML=state.components.map(component => componentTypes[component.type].pins.map(pin => {
     const endpoint={component:component.id,pin:pin.name};
@@ -216,6 +220,7 @@ function canvasPoint(event) {
 const programPanel = $('#program-panel');
 const programFrame = $('#program-frame');
 let lastBoardClick = null;
+let programComponentStates = {};
 let programReturnFocus = null;
 let programCloseTimer = null;
 
@@ -223,8 +228,9 @@ function openBoardProgram(component) {
   if (programPanel.open || component.type !== 'uno') return;
   try { sessionStorage.setItem('robokan.program.circuit-transfer', snapshot()); }
   catch { status('No se pudo abrir el programa. Comprueba el almacenamiento del navegador.'); return; }
-  const componentIndex = state.components.findIndex(candidate => candidate.id === component.id);
-  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: 'arduino-uno:' + (componentIndex + 1), programKey: component.id });
+  const componentNumber = /-([1-9]\d*)$/.exec(component.id)?.[1];
+  if (!componentNumber) { status('La placa tiene un identificador incompatible.'); return; }
+  const params = new URLSearchParams({ circuit: '1', embedded: '1', board: 'arduino-uno:' + componentNumber, programKey: component.id });
   programReturnFocus = component.id;
   $('#program-board-name').textContent = componentTypes[component.type].name + ' · ' + component.id;
   programFrame.src = 'blocks.html?' + params.toString();
@@ -237,7 +243,15 @@ function requestProgramClose() {
 $('#close-program-panel').addEventListener('click', requestProgramClose);
 programPanel.addEventListener('cancel', event => { event.preventDefault(); requestProgramClose(); });
 window.addEventListener('message', event => {
-  if (event.origin !== location.origin || event.source !== programFrame.contentWindow || event.data?.type !== 'robokan:close-allowed' || !programPanel.open) return;
+  if (event.origin !== location.origin || event.source !== programFrame.contentWindow || !programPanel.open) return;
+  if (event.data?.type === 'robokan:circuit-state') {
+    const incoming = event.data.statusByInstance;
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return;
+    programComponentStates = Object.fromEntries(Object.entries(incoming).filter(([id, value]) => /^[a-z0-9-]+:[1-9]\d*$/.test(id) && ['ok','unpowered','burned'].includes(value)));
+    renderComponents();
+    return;
+  }
+  if (event.data?.type !== 'robokan:close-allowed') return;
   programPanel.classList.remove('is-open');
   clearTimeout(programCloseTimer);
   programCloseTimer = setTimeout(() => {
@@ -264,6 +278,11 @@ canvas.addEventListener('pointerdown',event=>{
     if (tool==='wire') { status('Elige un pin del componente para empezar el cable.'); return; }
     event.preventDefault(); pending=null; selection={kind:'component',id:element.dataset.component};
     const component=state.components.find(item=>item.id===selection.id);
+    const now = performance.now();
+    if (component.type === 'uno' && lastBoardClick?.id === component.id && now - lastBoardClick.time < 450 && Math.hypot(event.clientX - lastBoardClick.x, event.clientY - lastBoardClick.y) < 8) {
+      lastBoardClick = null; drag = null; openBoardProgram(component); return;
+    }
+    lastBoardClick = component.type === 'uno' ? { id: component.id, time: now, x: event.clientX, y: event.clientY } : null;
     const position=canvasPoint(event);
     drag={id:component.id,pointer:event.pointerId,startX:position.x,startY:position.y,x:component.x,y:component.y,before:snapshot(),moved:false};
     canvas.setPointerCapture(event.pointerId);
@@ -303,6 +322,7 @@ canvas.addEventListener('pointermove',event=>{
 function finishDrag(event) {
   if (!drag || drag.pointer!==event.pointerId) return;
   if (drag.kind==='pan') { drag=null;$('#workspace').classList.remove('panning');if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);return; }
+  if (drag.moved) lastBoardClick = null;
   if (event.type==='pointercancel') state=JSON.parse(drag.before);
   else if (drag.moved && snapshot()!==drag.before) { commit(drag.before); status('Componente movido. Las conexiones se han mantenido.'); }
   if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);

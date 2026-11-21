@@ -269,3 +269,13 @@ La interfaz combinada descrita en el apartado anterior fue retirada. Circuito y 
 - La animación respeta la preferencia de movimiento reducido. Los mensajes entre panel y pantalla principal comprueban origen y ventana emisora.
 - El botón de navegación que transfería a una pantalla combinada fue eliminado. El nuevo punto de entrada es el Arduino.
 - La conexión eléctrica de desarrollo sigue disponible internamente. Distancia manual y adaptador oficial de mundo conservan los pendientes ya documentados.
+
+## Correcciones posteriores a la revisión del proyecto
+
+- La apertura por doble clic detecta las dos pulsaciones sobre la misma placa aunque el lienzo regenere sus elementos. Arrastrar una pieza cancela esa secuencia.
+- El panel comunica estados eléctricos al circuito visible mediante mensajes que comprueban origen y ventana emisora. Los componentes muestran su estado y el LED activo tiene un indicador luminoso.
+- Los identificadores canónicos se derivan del sufijo estable de las piezas y cables de la vista 2D. Eliminar o reordenar otras piezas conserva sus identidades.
+- La portada y sus estilos usan C++, incluido el ejemplo de código y las pestañas de la muestra.
+- Se ampliaron las pruebas del panel para cubrir pulsaciones reales y recepción de estados, y las pruebas de transferencia para conservar identidades.
+- La comprobación del mundo 3D y el adaptador oficial siguen pendientes de sus implementaciones publicadas por Roles 3 y 4.
+- Verificación posterior: 74 pruebas aprobadas (5 del menú y 69 de Vitest), build, comprobación de tipos de circuito y chequeo de formato correctos. Permanece el aviso de tamaño del paquete Blockly y la revisión visual manual de la animación.

@@ -9,6 +9,7 @@ import type { PinDrives } from "../core";
 import { circuitSpecs, createExample } from "./circuit-fixtures";
 import { createCircuitProgramAdapter } from "./circuit-program-adapter";
 import { importCircuitWorkbench } from "./import-circuit-workbench";
+import { evaluate } from "../modules/circuit";
 
 function BlocksPage() {
   const params = new URLSearchParams(location.search);
@@ -64,6 +65,11 @@ function BlocksPage() {
   const canRun = issues.length === 0 && Number.isFinite(testDistanceCm) && testDistanceCm >= 0 && instructions.every((instruction) => ["wait", "read_distance", ...(!isTestMode ? ["digital_write"] : [])].includes(instruction.op));
   const labels = spanish.blocks;
   const hasHardware = instructions.some((instruction) => instruction.op !== "wait");
+  useEffect(() => {
+    if (!isEmbedded) return;
+    const circuitState = evaluate(robot, circuitSpecs, drives);
+    window.parent.postMessage({ type: "robokan:circuit-state", statusByInstance: circuitState.statusByInstance }, location.origin);
+  }, [robot, drives, isEmbedded]);
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(outputView === "cpp" ? cpp : JSON.stringify(instructions, null, 2));
