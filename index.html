@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-type="software" data-radius="soft" data-buttons="pill" data-motion>
+<html lang="es" data-type="software" data-radius="soft" data-ground="sage" data-buttons="solid" data-motion>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,7 +7,7 @@
   <meta name="description" content="Un laboratorio de robótica para aprender a conectar, programar y probar robots desde el navegador.">
   <meta name="page-type" content="software">
   <meta name="site-kind" content="software">
-  <meta name="theme-color" content="#006edb">
+  <meta name="theme-color" content="#f7f7f5">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ROBOKAN — Robótica para estudiantes">
   <meta property="og:description" content="Conecta componentes, programa tus ideas y aprende cómo funciona un robot.">
@@ -26,28 +26,35 @@
   <script src="assets/backgrounds/backgrounds.js"></script>
 </head>
 <body>
-<!-- User-directed redesign: blue workbench hero, white educational content and rounded actions. Inspired by the supplied Tinkercad references, without its branding or assets. Continuous animation removed at the user's request. -->
+<!-- Software. Deal: card-pastels / Urbanist + DM Mono; collage hero; nav-centre;
+     solid buttons; wordmark; sage ground; marquee-row in #laboratorio.
+     Pink highlights actions; pastel components distinguish the educational work areas.
+     Triptych was re-dealt: one coherent editor, not a multi-output collage.
+     Scope: local home-page prototype; no simulator, backend, external artwork or publishing.
+     No shader: keep this first prototype lightweight. Footer/close variants omitted on this short page. -->
 <a class="skip-link" href="#top">Saltar al contenido</a>
 <header class="nav nav--centre">
   <div class="wrap nav__bar">
     <a class="nav__logo brand" href="#top" aria-label="ROBOKAN, inicio">ROBOKAN<span class="brand-dot" aria-hidden="true">.</span></a>
     <nav class="nav__links" aria-label="Navegación principal">
       <a class="nav__link" href="#laboratorio">El laboratorio</a>
+      <a class="nav__link" href="circuits.html">Circuitos</a>
     </nav>
-    <button class="btn btn--primary nav-start" type="button" data-open-start>Comenzar a crear</button>
+    <span class="edition">APRENDE · CONSTRUYE · PRUEBA</span>
   </div>
 </header>
 <main id="top">
-  <section class="hero hero--robokan" data-enter aria-labelledby="hero-h">
-    <div class="wrap"><div class="hero-text home-layout">
-      <div class="hero__text">
-        <p class="hero__kicker">IMAGINA. CONECTA. PROGRAMA.</p>
-        <h1 id="hero-h">Robótica para<br>aprender creando.</h1>
-        <p class="hero__lead">Conecta componentes, programa con bloques o Python y prueba tus ideas con robots. Un laboratorio de robótica para estudiantes de primaria y secundaria.</p>
+  <section class="hero hero--collage" data-enter aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text grid hero__grid">
+      <div class="hero__text span-5">
+        <p class="hero__kicker">TU PRIMER LABORATORIO DE ROBÓTICA</p>
+        <h1 id="hero-h">Robótica para estudiantes.</h1>
+        <p class="hero__lead">ROBOKAN es un laboratorio para aprender robótica y electrónica. Conecta componentes, programa con bloques o Python y prueba tus robots en un mundo 3D.</p>
         <div class="btn-row"><button class="btn btn--primary" type="button" data-open-start>Comenzar a crear</button></div>
+        <p class="hero__proof">Para primaria y secundaria. En español, desde el navegador.</p>
       </div>
-      <div class="hero__art" aria-label="Vista previa del laboratorio ROBOKAN">
-        <div class="app-frame">
+      <div class="hero__art span-6 start-7" aria-label="Vista previa del laboratorio ROBOKAN">
+        <div class="ly-piece ly-piece--main app-frame">
           <div class="app-bar"><span class="window-dots" aria-hidden="true">● ● ●</span><span>Mi primer robot</span><span class="preview-label">Vista previa</span></div>
           <div class="app-steps"><span>Robot</span><span>Conectar</span><strong>Programar</strong><span>Probar</span></div>
           <div class="workbench">
@@ -83,62 +90,27 @@ while True:
           </div>
           <div class="app-bottom"><span>Proyecto: evasor de obstáculos</span><span>Muestra de interfaz</span></div>
         </div>
+        <div class="ly-piece ly-piece--note mission-note"><span class="note-icon" aria-hidden="true">↳</span><div><strong>¿Y si hay un obstáculo?</strong><p>Tu programa decide el camino.</p></div></div>
       </div>
     </div></div>
   </section>
-  <section class="section learning-section" id="laboratorio" aria-labelledby="lab-h">
+  <section class="section" id="laboratorio" aria-labelledby="lab-h" style="--h:1">
     <div class="wrap lab-content">
-      <p class="t-label">UN ESPACIO PARA PROBAR TUS IDEAS</p>
-      <h2 id="lab-h">¿Qué vas a crear hoy?</h2>
-      <p class="t-lead lab-lead">ROBOKAN reúne circuitos, programación y robots en un mismo lugar. Aprende paso a paso, prueba una idea y descubre qué puedes mejorar.</p>
-      <div class="learning-grid">
-        <article class="learning-item">
-          <div class="learning-icon icon-blue" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="20" y="24" width="56" height="48" rx="8"/><path d="M31 39h34M31 49h20M31 59h27M34 16v8m14-8v8m14-8v8M34 72v8m14-8v8m14-8v8M12 36h8m-8 16h8m56-16h8m-8 16h8"/></svg></div>
-          <h3>Conecta tus componentes</h3><p>Conoce los sensores, los motores y los cables que hacen funcionar un robot.</p>
-        </article>
-        <article class="learning-item">
-          <div class="learning-icon icon-orange" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 20h19v-5h14v5h19v24H55v5H41v-5H22zM22 51h19v5h14v-5h19v24H55v5H41v-5H22z"/><path d="m34 31 5 4-5 4m22 23 5 4-5 4"/></svg></div>
-          <h3>Programa a tu manera</h3><p>Empieza con bloques visuales o escribe tus instrucciones en Python.</p>
-        </article>
-        <article class="learning-item">
-          <div class="learning-icon icon-green" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="21" y="29" width="54" height="45" rx="10"/><path d="M48 17v12M13 43h8m54 0h8M13 60h8m54 0h8M37 62h22"/><circle cx="37" cy="45" r="5"/><circle cx="59" cy="45" r="5"/><circle cx="48" cy="14" r="3"/></svg></div>
-          <h3>Prueba y vuelve a intentar</h3><p>Observa lo que hace tu robot y ajusta tu programa para resolver el reto.</p>
-        </article>
-      </div>
-      <div class="lab-bottom"><a class="brand" href="#top">ROBOKAN<span class="brand-dot" aria-hidden="true">.</span></a><span>Robótica y electrónica para aprender haciendo.</span></div>
+      <p class="t-label">DE LA IDEA AL ROBOT</p>
+      <h2 id="lab-h">Un laboratorio.<br>Tus propias soluciones.</h2>
+      <p class="t-lead lab-lead">Aprende qué conecta cada cable, qué indica un sensor y cómo una instrucción cambia lo que hace tu robot.</p>
+      <div data-moment="marquee-row" data-moment-opts='{"speed":24,"gap":48}'><ul class="mo-mq__track"><li>Circuitos</li><li>Sensores</li><li>Bloques</li><li>Python</li><li>Motores</li><li>Robots</li></ul></div>
+      <div class="lab-bottom"><span>ROBOKAN</span><span>Robótica y electrónica para aprender haciendo.</span></div>
     </div>
   </section>
 </main>
-<dialog id="start-dialog" aria-labelledby="start-title" aria-describedby="start-description" class="project-menu">
-  <header class="project-menu-header"><span class="brand">ROBOKAN<span class="brand-dot" aria-hidden="true">.</span></span><span class="menu-header-label">TU LABORATORIO</span><button type="button" class="close-dialog menu-close" aria-label="Cerrar menú y volver al inicio">×</button></header>
-  <div class="project-menu-layout">
-    <aside class="project-sidebar" aria-label="Tu espacio de creación">
-      <div class="workspace-avatar" aria-hidden="true">R</div><strong>Tu espacio de creación</strong><p>Una idea es un buen comienzo.</p>
-      <div class="sidebar-current"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3z"/></svg>Nuevo proyecto</div>
-      <span class="sidebar-note">Conecta.<br>Programa.<br>Prueba.</span>
-    </aside>
-    <div class="project-menu-content">
-      <div class="project-welcome"><div><p class="menu-eyebrow">DE LA IDEA AL ROBOT</p><h2 id="start-title">¿Qué robot vas a crear?</h2><p id="start-description">Empieza con una plantilla o construye tu propia idea desde cero.</p></div><div class="welcome-symbol" aria-hidden="true">+</div></div>
-      <div class="project-section-heading"><h3>Elige tu punto de partida</h3><span>2 robots · 1 lienzo en blanco</span></div>
-      <div class="project-options" aria-label="Opciones de proyecto">
-        <button type="button" class="project-option card" data-project="avoider" data-title="Esquivador de objetos" aria-pressed="false">
-          <span class="project-art art-avoider" aria-hidden="true"><span class="tile-obstacle"></span><span class="tile-obstacle tile-obstacle-small"></span><span class="tile-sensor-rays"></span><div class="robot"><div class="wheel wheel-left"></div><div class="wheel wheel-right"></div><div class="sensor"><i></i><i></i></div><div class="board"><i></i><b>R</b><i></i></div></div></span>
-          <span class="project-option-body"><span class="project-kind">ROBOT CON PLANTILLA</span><strong>Esquivador de objetos</strong><span class="project-description">Detecta lo que hay enfrente y cambia de dirección para evitar obstáculos.</span><span class="project-choose">Elegir robot<span class="selection-check" aria-hidden="true">✓</span></span></span>
-        </button>
-        <button type="button" class="project-option card" data-project="line-follower" data-title="Sigue líneas" aria-pressed="false">
-          <span class="project-art art-line" aria-hidden="true"><svg class="line-route" viewBox="0 0 300 180" preserveAspectRatio="none"><path d="M-10 140H75C140 140 75 40 145 40H200C260 40 230 110 310 110" fill="none" stroke="#344352" stroke-width="10" stroke-linecap="round"/></svg><div class="robot"><div class="wheel wheel-left"></div><div class="wheel wheel-right"></div><div class="sensor"><i></i><i></i></div><div class="board"><i></i><b>R</b><i></i></div></div></span>
-          <span class="project-option-body"><span class="project-kind">ROBOT CON PLANTILLA</span><strong>Sigue líneas</strong><span class="project-description">Usa sensores infrarrojos para seguir una línea y recorrer el camino.</span><span class="project-choose">Elegir robot<span class="selection-check" aria-hidden="true">✓</span></span></span>
-        </button>
-        <button type="button" class="project-option card" data-project="blank" data-title="Crear desde cero" aria-pressed="false">
-          <span class="project-art art-blank" aria-hidden="true"><span class="blank-plus">+</span></span>
-          <span class="project-option-body"><span class="project-kind">TU PROPIA IDEA</span><strong>Crear desde cero</strong><span class="project-description">Empieza sin una plantilla y decide cómo será tu robot.</span><span class="project-choose">Elegir proyecto vacío<span class="selection-check" aria-hidden="true">✓</span></span></span>
-        </button>
-      </div>
-      <p id="selection-status" class="selection-status" role="status" aria-live="polite" aria-atomic="true"></p>
-      <a id="open-circuit" class="btn btn--primary project-open" href="./circuit.html?project=avoider" hidden>Abrir circuito</a>
-      <p class="menu-prototype-notice">El editor de circuitos ya está disponible. La programación y la simulación 3D se integrarán en las siguientes etapas.</p>
-    </div>
-  </div>
+<dialog id="start-dialog" aria-labelledby="start-title">
+  <div class="dialog-head"><span class="t-label">ROBOKAN · PROTOTIPO</span><button type="button" class="close-dialog" aria-label="Cerrar selección">×</button></div>
+  <h2 id="start-title">Tu primer robot</h2>
+  <p>El evasor de obstáculos será el primer proyecto del laboratorio.</p>
+  <div class="start-project"><strong>Evasor de obstáculos</strong><span>Un sensor detecta lo que hay enfrente. Tu programa decide cuándo girar.</span></div>
+  <p class="prototype-notice">Esta es una muestra de la página principal. El editor y la simulación todavía no están conectados.</p>
+  <button type="button" class="btn btn--primary close-dialog">Volver a la portada</button>
 </dialog>
 <script type="module" src="assets/system.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>
