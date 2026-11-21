@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17243B">
+  <meta name="description" content="Construye y explora circuitos en el laboratorio de ROBOKAN.">
+  <title>Circuitos · ROBOKAN</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="circuits.css">
+  <script type="module" src="circuits.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Saltar al circuito</a>
+  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-circuit" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/><path d="M10 10h4v4h-4z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5v16M3 3c4-1 7 0 9 2 2-2 5-3 9-2v16c-4-1-7 0-9 2-2-2-5-3-9-2z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 0 14" transform="translate(0 -2)"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m16 4 5 5-5 5m5-5H11a7 7 0 0 0 0 14" transform="translate(0 -2)"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 24 24"><path d="m5 3 14 10-7 1-3 7z"/></symbol>
+    <symbol id="i-wire" viewBox="0 0 24 24"><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M5 7v7a5 5 0 0 0 5 5h7"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h12l4 4v14H3V3zM7 3v6h10V3M7 21v-8h10v8"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3v2m-1 3h.01"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 4zM3 12l9 4 9-4M3 17l9 4 9-4"/></symbol>
+  </defs></svg>
+  <nav class="rail" aria-label="Laboratorio">
+    <a class="rail-logo" href="index.html" aria-label="ROBOKAN, inicio">R<span></span></a>
+    <div class="rail-links">
+      <a class="rail-button" href="index.html" aria-label="Inicio" title="Inicio"><svg><use href="#i-home"/></svg></a>
+      <a class="rail-button active" href="circuits.html" aria-current="page" aria-label="Circuitos" title="Circuitos"><svg><use href="#i-circuit"/></svg></a>
+      <button class="rail-button" type="button" data-help aria-label="Guía de conexiones" title="Guía de conexiones"><svg><use href="#i-book"/></svg></button>
+    </div>
+    <button class="rail-button rail-help" type="button" data-help aria-label="Ayuda" title="Ayuda"><svg><use href="#i-help"/></svg></button>
+    <span class="rail-avatar" title="Espacio de trabajo local">R</span>
+  </nav>
+  <div class="app-shell">
+    <header class="project-header">
+      <a class="wordmark" href="index.html">ROBOKAN<span aria-hidden="true">•</span></a>
+      <span class="header-divider"></span>
+      <div class="project-name"><span>Mi laboratorio <svg><use href="#i-chevron"/></svg> Circuitos</span><h1>Evasor de obstáculos <span class="project-badge">Proyecto de inicio</span></h1></div>
+      <div class="header-actions"><span class="save-state" id="save-state">Cambios sin guardar</span><button class="button secondary" id="save-project" type="button"><svg><use href="#i-save"/></svg><span>Guardar proyecto</span></button></div>
+    </header>
+    <div class="workspace-toolbar">
+      <div class="workspace-tab"><svg><use href="#i-circuit"/></svg>Circuito <span>01</span></div>
+      <div class="edit-actions" aria-label="Edición del circuito">
+        <button class="icon-button" id="undo" type="button" aria-label="Deshacer" title="Deshacer (Ctrl+Z)" disabled><svg><use href="#i-undo"/></svg></button>
+        <button class="icon-button" id="redo" type="button" aria-label="Rehacer" title="Rehacer (Ctrl+Mayús+Z)" disabled><svg><use href="#i-redo"/></svg></button>
+        <span class="tool-divider"></span>
+        <button class="icon-button" id="delete-selection" type="button" aria-label="Eliminar selección" title="Eliminar selección" disabled><svg><use href="#i-trash"/></svg></button>
+      </div>
+      <div class="toolbar-end"><span class="local-label">Editor de conexiones</span><button class="button primary" id="check-circuit" type="button"><svg><use href="#i-check"/></svg>Revisar circuito</button></div>
+    </div>
+    <div class="editor-layout">
+      <aside class="library" id="library" aria-label="Biblioteca de componentes">
+        <div class="panel-heading"><h2>Componentes</h2><span class="count" id="library-count">6</span><button class="icon-button mobile-only" id="close-library" type="button" aria-label="Cerrar componentes"><svg><use href="#i-close"/></svg></button></div>
+        <label class="search-field"><svg><use href="#i-search"/></svg><input id="component-search" type="search" placeholder="Buscar componente…" aria-label="Buscar componente"><kbd>/</kbd></label>
+        <label class="category-label" for="component-category">Colección</label>
+        <select id="component-category"><option value="all">Todos los componentes</option><option value="boards">Placas y conexiones</option><option value="sensors">Sensores</option><option value="outputs">Salidas</option></select>
+        <div class="library-section-label">BIBLIOTECA DE COMPONENTES</div>
+        <div class="component-grid" id="component-library"></div>
+        <p class="empty-search" id="empty-search" hidden>No hay componentes con ese nombre.</p>
+        <div class="library-hint"><span class="hint-symbol">+</span><p><strong>Tu circuito empieza aquí</strong>Selecciona un componente para añadirlo a la mesa.</p></div>
+      </aside>
+      <main class="workspace" id="workspace" tabindex="-1" aria-label="Mesa de circuitos">
+        <div class="canvas-topline"><span><span class="canvas-status-dot"></span>Mesa de trabajo</span><span id="component-count">3 componentes</span></div>
+        <button class="button secondary mobile-library" id="open-library" type="button"><svg><use href="#i-plus"/></svg>Añadir componente</button>
+        <div class="canvas-tools" aria-label="Herramientas de la mesa">
+          <button class="icon-button selected" data-tool="select" type="button" aria-label="Seleccionar y mover" title="Seleccionar y mover (V)" aria-pressed="true"><svg><use href="#i-cursor"/></svg></button>
+          <button class="icon-button" data-tool="wire" type="button" aria-label="Conectar pines" title="Conectar pines (W)" aria-pressed="false"><svg><use href="#i-wire"/></svg></button>
+          <span class="tool-divider"></span><button class="icon-button" id="fit-view" type="button" aria-label="Ajustar circuito a la vista" title="Ajustar a la vista"><svg><use href="#i-fit"/></svg></button>
+        </div>
+        <svg id="circuit-canvas" viewBox="0 0 1100 750" xmlns="http://www.w3.org/2000/svg" aria-label="Circuito con placa Uno, sensor ultrasónico y protoboard">
+          <defs><filter id="component-shadow" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#17243B" flood-opacity=".12"/></filter></defs>
+          <g id="components-layer"></g><g id="wires-layer"></g><g id="pins-layer"></g><path id="wire-preview" fill="none" stroke-dasharray="7 6" pointer-events="none"/>
+        </svg>
+        <div class="connection-tip" id="connection-tip"><svg><use href="#i-wire"/></svg><span>Conecta tus ideas.<small>Haz clic en un pin y después en otro para crear un cable.</small></span><button class="icon-button" id="dismiss-tip" type="button" aria-label="Ocultar consejo"><svg><use href="#i-close"/></svg></button></div>
+        <div class="floating-colors" id="floating-colors" role="group" aria-label="Color del cable seleccionado" hidden></div>
+        <div class="canvas-bottomline"><span><kbd>V</kbd> Seleccionar <kbd>W</kbd> Cable <kbd>Esc</kbd> Cancelar</span><div class="zoom-controls"><button class="icon-button" id="zoom-out" type="button" aria-label="Alejar"><svg><use href="#i-minus"/></svg></button><button id="zoom-label" type="button" aria-label="Restablecer vista al 100%" title="Restablecer vista">100%</button><button class="icon-button" id="zoom-in" type="button" aria-label="Acercar"><svg><use href="#i-plus"/></svg></button></div></div>
+      </main>
+      <aside class="inspector" aria-label="Detalles del circuito">
+        <div class="panel-heading"><h2>Tu circuito</h2><svg><use href="#i-layers"/></svg></div>
+        <div class="project-overview"><div class="overview-icon"><svg><use href="#i-circuit"/></svg></div><strong>Evasor de obstáculos</strong><p>Un sensor para descubrir lo que hay enfrente.</p><span class="level-label">Electrónica · Nivel inicial</span></div>
+        <section class="inspector-section"><div class="section-heading"><h3 id="selection-heading">Conexiones</h3><span id="wire-count" class="count">4</span></div><div id="selection-details"></div><div class="connection-list" id="connection-list"></div></section>
+        <section class="inspector-section"><h3>Color del cable</h3><div class="wire-colors" id="wire-colors" role="group" aria-label="Color del cable"></div><p class="field-hint">Selecciona un cable para cambiar su color.</p></section>
+        <div class="learning-note"><span class="note-heading"><svg><use href="#i-info"/></svg>Antes de conectar</span><p>Los colores ayudan a seguir cada conexión. Usa coral para la alimentación y azul noche para tierra.</p><button class="text-button" type="button" data-help>Ver guía de conexiones<svg><use href="#i-chevron"/></svg></button></div>
+        <div class="inspector-footer"><span class="palette-mark"><i></i><i></i><i></i><i></i></span>Hecho para experimentar.</div>
+      </aside>
+    </div>
+    <footer class="status-bar"><span><span class="status-indicator"></span><span id="status-message" role="status" aria-live="polite">Listo para construir</span></span><span>ROBOKAN LAB <span class="status-separator">/</span> Circuitos</span></footer>
+  </div>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><span class="dialog-icon"><svg><use href="#i-book"/></svg></span><button class="icon-button" data-close-dialog type="button" aria-label="Cerrar guía"><svg><use href="#i-close"/></svg></button></div><h2 id="help-title">Cada pin tiene su lugar.</h2><p>Selecciona un pin de la placa y después uno del sensor. Puedes mover los componentes; los cables seguirán conectados.</p><dl class="pin-guide"><div><dt><i style="--wire:#F16C75"></i>5V → VCC</dt><dd>Alimentación del sensor</dd></div><div><dt><i style="--wire:#17243B"></i>GND → GND</dt><dd>Tierra compartida</dd></div><div><dt><i style="--wire:#20C997"></i>D9 → TRIG</dt><dd>Señal de disparo</dd></div><div><dt><i style="--wire:#8B72E8"></i>D10 → ECHO</dt><dd>Señal de respuesta</dd></div></dl><p class="dialog-footnote">Este editor permite diseñar conexiones. No ejecuta una simulación eléctrica.</p><button class="button primary" data-close-dialog type="button">Volver al circuito</button></dialog>
+  <dialog id="check-dialog" aria-labelledby="check-title"><div class="dialog-heading"><span class="dialog-icon"><svg><use href="#i-check"/></svg></span><button class="icon-button" data-close-dialog type="button" aria-label="Cerrar revisión"><svg><use href="#i-close"/></svg></button></div><h2 id="check-title">Revisión de conexiones</h2><p id="check-summary"></p><ul id="check-results" class="check-results"></ul><p class="dialog-footnote">Revisión del cableado directo entre la primera placa Uno y el primer HC-SR04. No comprueba continuidad de la protoboard ni simula electricidad.</p><button class="button primary" data-close-dialog type="button">Volver al circuito</button></dialog>
+</body>
+</html>

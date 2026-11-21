@@ -1,7 +1,5 @@
 const dialog = document.querySelector('#start-dialog');
-document.querySelectorAll('[data-open-start]').forEach(button => {
-  button.addEventListener('click', () => dialog.showModal());
-});
+document.querySelector('[data-open-start]').addEventListener('click', () => { window.location.href = 'circuits.html'; });
 document.querySelectorAll('.close-dialog').forEach(button => {
   button.addEventListener('click', () => dialog.close());
 });
@@ -11,17 +9,22 @@ dialog.addEventListener('click', event => {
   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
 });
 
-// Preserve project selection and open the matching local circuit workbench explicitly.
-const projectOptions = [...document.querySelectorAll('[data-project]')];
-const selectionStatus = document.querySelector('#selection-status');
-const openCircuit = document.querySelector('#open-circuit');
-projectOptions.forEach(option => {
-  option.addEventListener('click', () => {
-    projectOptions.forEach(candidate => candidate.setAttribute('aria-pressed', String(candidate === option)));
-    selectionStatus.textContent = 'Seleccionaste: ' + option.dataset.title + '.';
-    if (openCircuit) {
-      openCircuit.href = './circuit.html?project=' + encodeURIComponent(option.dataset.project);
-      openCircuit.hidden = false;
-    }
+// The copied kit owns tab selection; add standard arrow-key navigation.
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+tabs.forEach((tab, index) => {
+  tab.addEventListener('keydown', event => {
+    const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (!offset) return;
+    event.preventDefault();
+    const next = tabs[(index + offset + tabs.length) % tabs.length];
+    next.click();
+    next.focus();
   });
 });
+
+// Translate generated pause controls without changing the vendor runtime.
+new MutationObserver(() => {
+  document.querySelectorAll('.mo-mq__pause[aria-label="Pause"], .mo-mq__pause[aria-label="Play"]').forEach(button => {
+    button.setAttribute('aria-label', button.getAttribute('aria-label') === 'Pause' ? 'Pausar animación' : 'Reanudar animación');
+  });
+}).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-label'] });
