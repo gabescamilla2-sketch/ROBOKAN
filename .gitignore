@@ -1,5 +1,38 @@
+# Dependencias y compilación
 node_modules/
 dist/
-.DS_Store
-*.blend1
 raw-models/
+*.blend1
+
+# Sistema operativo, editores y registros
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Archivos de contexto para asistentes de IA y herramientas locales del equipo
+CONTEXTO_PROYECTO.md
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.claude/
+.atl/
+.codegraph/
+.taste-skill/
+odd/
+
+# Archivos que la aplicación no usa: se conservan solo en local
+/playground*.json
+/style.css
+/favicon.svg
+/logotipo.png
+/robokan-isotipo.svg
+/robot.webp
+/assets/backgrounds/
+/assets/layout/
+/assets/moments/
+/assets/motion/
+/assets/ui/
+/assets/system.css
+/assets/system.js

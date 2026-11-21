@@ -81,7 +81,7 @@ npm run dev
 
 Abre la dirección que muestre la terminal (normalmente `http://127.0.0.1:5173`) y pulsa **Comenzar a crear**.
 
-Para conocer el funcionamiento interno (arquitectura, contratos entre módulos y pruebas) consulta [CONTEXTO_PROYECTO.md](CONTEXTO_PROYECTO.md) y la carpeta [docs/](docs/).
+Para conocer el funcionamiento interno (arquitectura y contratos entre módulos) consulta la carpeta [docs/](docs/). Las pruebas se ejecutan con `npm test`.
 
 ## Equipo y créditos
 
