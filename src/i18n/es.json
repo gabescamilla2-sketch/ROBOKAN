@@ -1,7 +1,15 @@
 {
   "blocks": {
     "title": "Programar con bloques",
-    "instructions": "Conecta bloques Esperar y cambia su duración. El programa se repite hasta que pulses Detener.",
+    "instructions": "Conecta los bloques y edita sus campos para ver el C++ y las instrucciones. Los programas de Esperar se repiten hasta pulsar Detener.",
+    "motorMessage": "Mover motor %1 velocidad %2 %",
+    "distanceMessage": "Leer distancia TRIG %1 ECHO %2 guardar en %3",
+    "ledMessage": "LED en pin %1 %2",
+    "buzzerMessage": "Buzzer %1 %2 frecuencia %3 Hz",
+    "on": "Encendido",
+    "off": "Apagado",
+    "hardwarePending": "La ejecución de motores, sensores, LED y buzzer requiere la integración con los Roles 3 y 4. Puedes editar el programa y ver sus dos salidas.",
+    "cppHelpers": "Las funciones robokan_* son auxiliares educativas propuestas. Su implementación para hardware queda pendiente de acordar los pines y componentes.",
     "controls": "Controles del programa",
     "run": "Ejecutar",
     "pause": "Pausar",

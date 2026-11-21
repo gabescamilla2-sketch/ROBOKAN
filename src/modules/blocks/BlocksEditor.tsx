@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as Blockly from "blockly/core";
 import * as spanish from "blockly/msg/es";
-import type { WaitBlock } from "./definitions";
+import type { ProgramBlock } from "./definitions";
 import { blocks as labels } from "../../i18n/es.json";
 
 Blockly.setLocale(Object.fromEntries(
@@ -10,7 +10,7 @@ Blockly.setLocale(Object.fromEntries(
 
 export interface BlocksEditorProps {
   isReadOnly: boolean;
-  onChange: (blocks: WaitBlock[]) => void;
+  onChange: (blocks: ProgramBlock[]) => void;
 }
 
 export function BlocksEditor({ isReadOnly, onChange }: BlocksEditorProps) {
@@ -31,12 +31,20 @@ export function BlocksEditor({ isReadOnly, onChange }: BlocksEditorProps) {
           nextStatement: null,
           colour: 215,
         },
+        { type: "robokan_motor_write", message0: labels.motorMessage,
+          args0: [{ type: "field_input", name: "INSTANCE", text: "dc-motor:1" }, { type: "field_number", name: "SPEED", value: 50, min: -100, max: 100 }], previousStatement: null, nextStatement: null, colour: 150 },
+        { type: "robokan_read_distance", message0: labels.distanceMessage,
+          args0: [{ type: "field_dropdown", name: "TRIG", options: Array.from({ length: 14 }, (_, index) => [`D${index}`, `D${index}`]) }, { type: "field_dropdown", name: "ECHO", options: Array.from({ length: 14 }, (_, index) => [`D${index}`, `D${index}`]) }, { type: "field_dropdown", name: "RESULT", options: [["distance_cm", "distance_cm"], ["distance_cm_2", "distance_cm_2"]] }], previousStatement: null, nextStatement: null, colour: 275 },
+        { type: "robokan_digital_write", message0: labels.ledMessage,
+          args0: [{ type: "field_dropdown", name: "PIN", options: Array.from({ length: 14 }, (_, index) => [`D${index}`, `D${index}`]) }, { type: "field_dropdown", name: "VALUE", options: [[labels.on, "1"], [labels.off, "0"]] }], previousStatement: null, nextStatement: null, colour: 45 },
+        { type: "robokan_buzzer_write", message0: labels.buzzerMessage,
+          args0: [{ type: "field_input", name: "INSTANCE", text: "buzzer:1" }, { type: "field_dropdown", name: "ON", options: [[labels.on, "true"], [labels.off, "false"]] }, { type: "field_number", name: "FREQUENCY", value: 440, min: 1, max: 20000 }], previousStatement: null, nextStatement: null, colour: 20 },
       ]);
     }
     const workspace = Blockly.inject(containerRef.current, {
       toolbox: {
         kind: "flyoutToolbox",
-        contents: [{ kind: "block", type: "robokan_wait" }],
+        contents: ["wait", "motor_write", "read_distance", "digital_write", "buzzer_write"].map((op) => ({ kind: "block", type: `robokan_${op}` })),
       },
       trashcan: true,
       scrollbars: true,
@@ -44,11 +52,17 @@ export function BlocksEditor({ isReadOnly, onChange }: BlocksEditorProps) {
     });
     workspaceRef.current = workspace;
     const publishProgram = () => {
-      const blocks: WaitBlock[] = [];
+      const blocks: ProgramBlock[] = [];
       for (const firstBlock of workspace.getTopBlocks(true)) {
         let block: Blockly.Block | null = firstBlock;
         while (block) {
-          blocks.push({ type: "wait", delayMs: Number(block.getFieldValue("SECONDS")) * 1000 });
+          switch (block.type) {
+            case "robokan_wait": blocks.push({ type: "wait", delayMs: Number(block.getFieldValue("SECONDS")) * 1000 }); break;
+            case "robokan_motor_write": blocks.push({ type: "motor_write", instanceId: block.getFieldValue("INSTANCE"), speedPct: Number(block.getFieldValue("SPEED")) }); break;
+            case "robokan_read_distance": blocks.push({ type: "read_distance", trigPinName: block.getFieldValue("TRIG"), echoPinName: block.getFieldValue("ECHO"), resultId: block.getFieldValue("RESULT") }); break;
+            case "robokan_digital_write": blocks.push({ type: "digital_write", pinName: block.getFieldValue("PIN"), digitalValue: block.getFieldValue("VALUE") === "1" ? 1 : 0 }); break;
+            case "robokan_buzzer_write": blocks.push({ type: "buzzer_write", instanceId: block.getFieldValue("INSTANCE"), isOn: block.getFieldValue("ON") === "true", frequencyHz: Number(block.getFieldValue("FREQUENCY")) }); break;
+          }
           block = block.getNextBlock();
         }
       }
